@@ -1,0 +1,29 @@
+{
+  "SIRKETLER": {
+    "ORNEK_SIRKET_A": {
+      "HEDEF_CS_LISTESI": [
+        {
+          "NAME": "sistem.orneksirket.com.tr_CS_SSL",
+          "DESCRIPTION": "Ornek Sistem Portali"
+        },
+        {
+          "NAME": "servis.orneksirket.com.tr_SSL",
+          "DESCRIPTION": "Ornek B2B Servisi"
+        }
+      ],
+      "HEDEF_LB_LISTESI": [
+        "yonetim.orneksirket.com.tr_https",
+        "rapor.orneksirket.com.tr_SSL"
+      ]
+    },
+    "ORNEK_SIRKET_B": {
+      "HEDEF_CS_LISTESI": [
+        {
+          "NAME": "api.ikincisirket.com_CS",
+          "DESCRIPTION": "API Gateway"
+        }
+      ],
+      "HEDEF_LB_LISTESI": []
+    }
+  }
+}
