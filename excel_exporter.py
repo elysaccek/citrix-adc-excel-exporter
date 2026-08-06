@@ -98,7 +98,7 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
         
         if current_lb != prev_lb or row > last_row:
             if row - 1 > start_lb_row and prev_lb and prev_lb != "":
-                for col_idx in range(6, 9): 
+                for col_idx in range(6, 10): 
                     ws.merge_cells(start_row=start_lb_row, start_column=col_idx, end_row=row-1, end_column=col_idx)
             start_lb_row = row
 

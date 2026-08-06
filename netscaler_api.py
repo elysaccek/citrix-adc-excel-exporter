@@ -14,10 +14,6 @@ class InsecureTLSAdapter(requests.adapters.HTTPAdapter):
         return super(InsecureTLSAdapter, self).init_poolmanager(*args, **kwargs)
 
 def connect_and_login(ns_ip, username, password):
-
-    print(f"DEBUG Username: {repr(username)}")
-    print(f"DEBUG Password: {repr(password)}")
-
     base_url = f"https://{ns_ip}/nitro/v1/config"
     session = requests.Session()
     session.mount('https://', InsecureTLSAdapter())
