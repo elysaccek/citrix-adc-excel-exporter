@@ -1,10 +1,11 @@
 # Citrix NetScaler (ADC) LB & CS Raporlama Aracı
-Citrix NetScaler (ADC) üzerinden NITRO API kullanarak Content Switch (CS) ve Load Balancer (LB/VS) yapılandırmalarını çeken; kural, port, protokol ve backend sunucu bilgilerini analiz ederek şirket/proje bazlı, formatlanmış (hücreleri dikey birleştirilmiş) profesyonel Excel raporları oluşturan modüler Python aracıdır.
+Citrix NetScaler (ADC) üzerinden NITRO API kullanarak Content Switch (CS) ve Load Balancer (LB/VS) yapılandırmalarını çeken; kural, policy, dataset, port, protokol ve backend sunucu bilgilerini analiz ederek şirket/proje bazlı, formatlanmış profesyonel Excel raporları oluşturan modüler Python aracıdır.
 
 ## Öne Çıkan Özellikler
 * **İnteraktif Yönetim Paneli:** Araç çalıştırıldığında açılan CLI paneli sayesinde sadece seçtiğiniz şirketlerin NetScaler cihazlarına bağlanarak gereksiz ağ ve API trafiğinin önüne geçer.
+* **CS Policy & Kural Analizi:** Content Switch yönlendirme kurallarını (Policy Name, Priority, Expression) detaylıca çeker. Bir Load Balancer'a birden fazla kural geliyorsa bunları alt alta düzenli bir şekilde listeler.
+* **Otomatik Dataset (Veri Seti) Keşfi:** Policy kuralları içine gömülmüş (örn: `CONTAINS_ANY("ATLAS_VIP_IP")`) Dataset isimlerini otomatik tespit eder. NetScaler'a minimum API isteği atarak IP aralıklarını çeker ve **ana raporun yanına her Dataset için ayrı bir Excel sekmesi (Tab)** oluşturur.
 * **Çoklu Cihaz (Multi-NLB) Desteği:** Her şirket veya proje için farklı NetScaler IP, Kullanıcı Adı ve Parola tanımlanabilir. Özel tanım yapılmayanlar varsayılan cihaza yönlenir.
-* **Detaylı Topoloji Haritası:** Content Switch IP/Port, Load Balancer (VS) IP/Port verilerini hiyerarşik olarak birleştirir.
 * **Client IP (CIP) Analizi:** Backend servislerde CIP'in aktif olup olmadığını ve aktifse hangi header (örn: `X-Forwarded-For`, `client-ip`) ile gönderildiğini otomatik tespit eder.
 * **Akıllı Excel Çıktısı:** Aynı CS ve VS'ye ait verileri akıllı algoritmasıyla dikey olarak birleştirir (merge), okumayı kolaylaştıran kurumsal pastel renkler ve zebra desenleri uygular, sütunları otomatik boyutlandırır.
 
