@@ -19,6 +19,9 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
     header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
     center_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    red_font = Font(color="9C0006")
+    
     thin_border = Border(left=Side(style='thin', color='BFBFBF'),
                          right=Side(style='thin', color='BFBFBF'),
                          top=Side(style='thin', color='BFBFBF'),
@@ -68,6 +71,9 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
         row_list = [row_data.get(f, "") for f in fields]
         ws_main.append(row_list)
         
+        hl_lb_red = row_data.get("_highlight_lb_red", False)
+        hl_az_red = row_data.get("_highlight_azure_red", False)
+        
         for col_idx in range(1, len(fields) + 1):
             cell = ws_main.cell(row=current_row, column=col_idx)
             cell.alignment = center_alignment
@@ -77,6 +83,14 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                 cell.fill = cs_fill
             else:
                 cell.fill = vs_fill
+            
+            if hl_lb_red and 13 <= col_idx <= 16:
+                cell.fill = red_fill
+                cell.font = red_font
+                
+            if hl_az_red and 17 <= col_idx <= 18:
+                cell.fill = red_fill
+                cell.font = red_font
                 
         current_row += 1
 

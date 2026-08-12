@@ -1,9 +1,11 @@
 import os
+import re
 from dotenv import load_dotenv
 import netscaler_api
 import config_manager
 import excel_exporter
 import dataset_manager
+import azure_manager
 
 load_dotenv()
 
@@ -11,7 +13,8 @@ EMPTY_ROW = {
     "Content Switch": "", "CS Aciklama": "", "CS IP": "", "CS Port": "", "CS Protokol": "",
     "CS Policy Name": "", "CS Policy Priority": "", "CS Policy Rule": "",
     "Load Balancer": "", "VS IP": "", "VS Port": "", "VS Protokol": "",
-    "Backend Server": "", "IP Adresi": "", "Port": "", "CIP": ""
+    "Backend Server": "", "IP Adresi": "", "Port": "", "CIP": "",
+    "Azure Hostname": "", "Azure Tag": ""
 }
 
 def clear_screen():
@@ -58,29 +61,72 @@ def select_companies_menu(sirketler):
         else:
             input("\n[!] Hatalı giriş! (Enter ile devam)...")
 
-def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info):    
+def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config):    
     lb_info = netscaler_api.get_lb_info(session, base_url, headers, lb_name)
     backends = netscaler_api.get_backend_services(session, base_url, headers, lb_name)
     
-    for backend in backends:
-        report_data.append({
-            "Content Switch": cs_info["name"],
-            "CS Aciklama": cs_info["desc"],
-            "CS IP": cs_info["ip"],
-            "CS Port": cs_info["port"],
-            "CS Protokol": cs_info["protocol"],
-            "CS Policy Name": cs_info["pol_name"],
-            "CS Policy Priority": cs_info["pol_pri"],
-            "CS Policy Rule": cs_info["pol_rule"],
-            "Load Balancer": lb_name,
-            "VS IP": lb_info["ip"],
-            "VS Port": lb_info["port"],
-            "VS Protokol": lb_info["protocol"],
-            "Backend Server": backend["name"],
-            "IP Adresi": backend["ip"],
-            "Port": backend["port"],
-            "CIP": backend["cip"]
-        })
+    lb_to_tag = {item.get("LB"): item.get("TAG") for item in sirket_config.get("AZURE_TAG_LB_ESLESMESI", [])}
+
+    if lb_name in lb_to_tag and azure_servers is not None:
+        expected_tag = lb_to_tag[lb_name]
+        
+        az_matches = {}
+        for s in azure_servers:
+            tags_list = [t.strip() for t in s["Tags"].split(",")]
+            if expected_tag in tags_list:
+                az_matches[s["ServerName"].upper()] = s
+                
+        lb_matches = {b["name"].upper(): b for b in backends}
+        
+        matched_az = set()
+        
+        for lb_raw_name, lb_b in lb_matches.items():
+            base_hostname = re.sub(r'_\d+$', '', lb_raw_name)
+            
+            in_az = base_hostname in az_matches
+            az_b = az_matches.get(base_hostname, {"ServerName": "-", "Tags": "-"})
+            
+            if in_az:
+                matched_az.add(base_hostname)
+                
+            row = {
+                "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
+                "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
+                "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
+                "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
+                "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"],
+                "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag if in_az else "-"
+            }
+            
+            if not in_az:
+                row["_highlight_lb_red"] = True
+                
+            report_data.append(row)
+            
+        for az_hostname, az_b in az_matches.items():
+            if az_hostname not in matched_az:
+                lb_b = {"name": "-", "ip": "-", "port": "-", "cip": "-"}
+                row = {
+                    "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
+                    "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
+                    "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
+                    "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
+                    "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"],
+                    "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag
+                }
+                row["_highlight_azure_red"] = True
+                report_data.append(row)
+                
+    else:
+        for backend in backends:
+            report_data.append({
+                "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
+                "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
+                "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
+                "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
+                "Backend Server": backend["name"], "IP Adresi": backend["ip"], "Port": backend["port"], "CIP": backend["cip"],
+                "Azure Hostname": "", "Azure Tag": ""
+            })
 
 def main():
     try:
@@ -103,6 +149,19 @@ def main():
         print(f"==========================================")
         print(f"[*] {sirket_adi} ŞİRKETİ İŞLENİYOR...")
         print(f"==========================================")
+
+        azure_server_list = None
+        if sirket_config.get("AZURE") == True:
+            az_url = os.getenv(f"{sirket_adi}_AZURE_SERVER_URL")
+            az_col = os.getenv(f"{sirket_adi}_AZURE_COLLECTION")
+            az_proj = os.getenv(f"{sirket_adi}_AZURE_PROJECT")
+            az_dg_id = os.getenv(f"{sirket_adi}_AZURE_DEPLOYMENT_GROUP_ID")
+            az_pat = os.getenv(f"{sirket_adi}_AZURE_PAT")
+            
+            if all([az_url, az_col, az_proj, az_dg_id, az_pat]):
+                azure_server_list = azure_manager.fetch_azure_deployment_targets(az_url, az_col, az_proj, az_dg_id, az_pat)
+            else:
+                print(f"[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik! Atlanıyor...\n")
 
         ns_ip = os.getenv(f"{sirket_adi}_NS_IP") or os.getenv("NS_IP")
         ns_user = os.getenv(f"{sirket_adi}_NS_USER") or os.getenv("NS_USER")
@@ -147,7 +206,7 @@ def main():
                         "pol_pri": "\n".join(p_data["priorities"]),
                         "pol_rule": "\n".join(p_data["rules"])
                     }
-                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info)
+                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config)
                     processed_lbs.add(lb_name)
                 report_data.append(EMPTY_ROW)
             else:
@@ -162,7 +221,7 @@ def main():
                 "name": "N/A", "desc": "Bağımsız VS", "ip": "N/A", "port": "N/A", 
                 "protocol": "N/A", "pol_name": "N/A", "pol_pri": "N/A", "pol_rule": "N/A"
             }
-            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info)
+            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config)
             report_data.append(EMPTY_ROW)
 
         if report_data:

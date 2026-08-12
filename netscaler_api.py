@@ -87,10 +87,8 @@ def get_cip_info(session, base_url, headers, entity_name, entity_type="service")
     return "N/A"
 
 def get_backend_services(session, base_url, headers, lb_name):
-    """Bir Load Balancer arkasındaki tüm Servis ve Servis Gruplarını liste olarak döner."""
     backends = []
     
-    # 1. Standart Servisler
     svc_res = session.get(f"{base_url}/lbvserver_service_binding/{lb_name}", headers=headers)
     if svc_res.status_code == 200:
         for svc in svc_res.json().get("lbvserver_service_binding", []):
@@ -102,7 +100,6 @@ def get_backend_services(session, base_url, headers, lb_name):
                 "cip": get_cip_info(session, base_url, headers, svc_name, "service")
             })
 
-    # 2. Servis Grupları
     grp_res = session.get(f"{base_url}/lbvserver_servicegroup_binding/{lb_name}", headers=headers)
     if grp_res.status_code == 200:
         for grp in grp_res.json().get("lbvserver_servicegroup_binding", []):
@@ -113,8 +110,10 @@ def get_backend_services(session, base_url, headers, lb_name):
                 "port": str(grp.get("port", "")),
                 "cip": get_cip_info(session, base_url, headers, grp_name, "servicegroup")
             })
+
+    sorted_backends = sorted(backends, key=lambda k: k["name"].lower())
             
-    return backends
+    return sorted_backends
 
 def get_cs_target_lbs(session, base_url, headers, cs_name):
     target_lbs_data = {}

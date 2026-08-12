@@ -1,6 +1,7 @@
 {
   "SIRKETLER": {
     "ORNEK_SIRKET_A": {
+      "AZURE": false,
       "HEDEF_CS_LISTESI": [
         {
           "NAME": "sistem.orneksirket.com.tr_CS_SSL",
@@ -17,6 +18,13 @@
       ]
     },
     "ORNEK_SIRKET_B": {
+      "AZURE": true,
+      "AZURE_TAG_LB_ESLESMESI": [
+        {
+          "TAG":"ROBOT",
+          "LB":"robot_havuz"
+        }
+      ],
       "HEDEF_CS_LISTESI": [
         {
           "NAME": "api.ikincisirket.com_CS",
