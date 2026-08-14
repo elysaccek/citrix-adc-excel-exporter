@@ -2,8 +2,9 @@
 Citrix NetScaler (ADC) üzerinden NITRO API kullanarak Content Switch (CS) ve Load Balancer (LB/VS) yapılandırmalarını çeken; kural, policy, dataset, port, protokol ve backend sunucu bilgilerini analiz ederek şirket/proje bazlı, formatlanmış profesyonel Excel raporları oluşturan modüler Python aracıdır.
 
 ## Öne Çıkan Özellikler
+* **🌐 Modern Web Arayüzü:** MVC mimarisiyle geliştirilmiş dahili Flask sunucusu sayesinde aracı web tarayıcınız üzerinden yönetebilirsiniz. Tarayıcıdan şirket seçebilir, canlı logları takip edebilir, üretilen raporları anında indirebilir veya Excel formatında doğrudan tarayıcı içinde sekmeli (tab) olarak görüntüleyebilirsiniz.
 * **Azure DevOps Denetimi (Audit):** NetScaler'daki (NLB) backend sunucular ile Azure DevOps Deployment Group'taki sunucuları belirttiğiniz Tag'lere göre çapraz kontrole sokar. NLB'de ismin sonuna eklenen `_PORT` eklerini akıllıca ayıklar. Azure'da olup NLB'de olmayan veya tam tersi durumdaki eksik/fazla sunucuları Excel'de **kırmızıyla uyararak** mimari açıklarını anında tespit etmenizi sağlar.
-* **İnteraktif Yönetim Paneli:** Araç çalıştırıldığında açılan CLI paneli sayesinde sadece seçtiğiniz şirketlerin NetScaler cihazlarına bağlanarak gereksiz ağ ve API trafiğinin önüne geçer.
+* **İnteraktif Yönetim Paneli (CLI):** Web arayüzü istenmeyen durumlarda, terminal üzerinden çalışan interaktif CLI paneli devreye girer. Sadece seçtiğiniz şirketlerin NetScaler cihazlarına bağlanarak gereksiz ağ ve API trafiğinin önüne geçer.
 * **CS Policy & Kural Analizi:** Content Switch yönlendirme kurallarını (Policy Name, Priority, Expression) detaylıca çeker. Bir Load Balancer'a birden fazla kural geliyorsa bunları alt alta düzenli bir şekilde listeler.
 * **Otomatik Dataset (Veri Seti) Keşfi:** Policy kuralları içine gömülmüş (örn: `CONTAINS_ANY("ATLAS_VIP_IP")`) Dataset isimlerini otomatik tespit eder. NetScaler'a minimum API isteği atarak IP aralıklarını çeker ve **ana raporun yanına her Dataset için ayrı bir Excel sekmesi (Tab)** oluşturur.
 * **Çoklu Cihaz (Multi-NLB) Desteği:** Her şirket veya proje için farklı NetScaler IP, Kullanıcı Adı ve Parola tanımlanabilir. Özel tanım yapılmayanlar varsayılan cihaza yönlenir.
@@ -18,12 +19,15 @@ Bu aracın cihazdan veri çekebilmesi için kullanılacak kullanıcının (user)
 ## Kurulum
 Gerekli Python kütüphanelerini kurmak için terminalde şu komutu çalıştırın:
 ```
-pip3 install requests urllib3 openpyxl python-dotenv
+pip3 install requests urllib3 openpyxl python-dotenv flask
 ```
 
 ## Yapılandırma
 Proje dizininde gizli bir .env dosyası oluşturun (veya repodaki .env.example dosyasının adını değiştirin) ve NetScaler giriş bilgilerinizi ekleyin:
 ```
+WEB_VIEW='True' veya 'False'
+PORT="5000"
+
 NS_IP=NLBIP
 NS_USER=kullanici
 NS_PASS=sifreniz
@@ -81,7 +85,9 @@ Projedeki settings_example.json dosyasının adını settings.json olarak deği�
 ```
 
 ## Manuel Çalıştırma
-Komut çalıştırıldığında cihazlara bağlanılır, veriler, Dataset'ler ve Azure DevOps entegrasyonu çekilir; ardından raporlar/ klasörü altına güncel tarih etiketiyle kurumsal renklendirilmiş bir Excel dosyası (.xlsx) oluşturulacaktır.
+Projenin kök dizininde aşağıdaki komutu çalıştırın:
 ```
 python3 main.py
 ```
+* Eğer .env dosyasında WEB_VIEW='True' ise: Dahili web sunucusu başlar. Tarayıcınızdan http://127.0.0.1:{PORT} adresine giderek işlemleri grafik arayüzden yapabilir, logları anlık takip edebilir ve Excel raporlarını tarayıcıda görüntüleyebilirsiniz.
+* Eğer WEB_VIEW='False' ise: Terminalde interaktif (CLI) menü açılır. Rakamlarla seçim yaparak cihazlara bağlanır, raporları doğrudan raporlar/ klasörü altına çıkartırsınız.

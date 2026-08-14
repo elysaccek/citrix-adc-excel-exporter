@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from dotenv import load_dotenv
 import netscaler_api
 import config_manager
@@ -77,7 +78,6 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 az_matches[s["ServerName"].upper()] = s
                 
         lb_matches = {b["name"].upper(): b for b in backends}
-        
         matched_az = set()
         
         for lb_raw_name, lb_b in lb_matches.items():
@@ -128,21 +128,15 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 "Azure Hostname": "", "Azure Tag": ""
             })
 
-def main():
+def run_reports(selected_company_names):
     try:
         sirketler = config_manager.load_settings()
     except Exception as e:
         print(f"[-] Config Hatasi: {e}")
         return
 
-    if not sirketler:
-        print("[-] settings.json içinde şirket bulunamadı!")
-        return
-
-    selected_company_names = select_companies_menu(sirketler)
     sirketler_to_process = {k: v for k, v in sirketler.items() if k in selected_company_names}
     
-    clear_screen()
     print("[*] Seçilen şirketler için işlemler başlatılıyor...\n")
 
     for sirket_adi, sirket_config in sirketler_to_process.items():
@@ -246,7 +240,29 @@ def main():
 
         netscaler_api.logout(session, base_url, headers)
         
-    print("[✓] Tüm işlemler başarıyla tamamlandı.")
+    print("[✓] Tüm işlemler başarıyla tamamlandı.\n")
+
+def main():
+    is_web = os.getenv("WEB_VIEW", "False").strip().lower() == "true"
+    port_number = os.getenv("PORT")
+    
+    if is_web:
+        import web_app
+        web_app.start_server(port_number)
+    else:
+        try:
+            sirketler = config_manager.load_settings()
+        except Exception as e:
+            print(f"[-] Config Hatasi: {e}")
+            return
+
+        if not sirketler:
+            print("[-] settings.json içinde şirket bulunamadı!")
+            return
+
+        selected_company_names = select_companies_menu(sirketler)
+        clear_screen()
+        run_reports(selected_company_names)
 
 if __name__ == "__main__":
     main()

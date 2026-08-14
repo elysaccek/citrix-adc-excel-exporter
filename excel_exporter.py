@@ -133,7 +133,7 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                         max_length = len(line)
             except:
                 pass
-        adjusted_width = min(max_length + 2, 70)
+        adjusted_width = min(max(max_length + 6, 15), 70)
         ws_main.column_dimensions[column_letter].width = adjusted_width
 
     if datasets_data:
