@@ -134,7 +134,7 @@ def get_cs_target_lbs(session, base_url, headers, cs_name):
     pol_res = session.get(f"{base_url}/csvserver_cspolicy_binding/{cs_name}", headers=headers)
     if pol_res.status_code == 200:
         for b in pol_res.json().get("csvserver_cspolicy_binding", []):
-            target_lb = b.get("targetlbvserver")
+            target_lb = b.get("targetlbvserver") or b.get("targetvserver")
             if target_lb:
                 p_name = b.get("policyname", "N/A")
                 p_pri = b.get("priority", "N/A")
@@ -150,3 +150,96 @@ def get_cs_target_lbs(session, base_url, headers, cs_name):
                 add_lb(target_lb, p_name, p_pri, p_rule)
 
     return target_lbs_data
+
+def get_vserver_policies(session, base_url, headers, vs_name, vs_type, vs_info):
+    policies_list = []
+    policy_found = False  
+    
+    for pol_type in ['responder', 'rewrite']:
+        endpoint = f"{base_url}/{vs_type}_{pol_type}policy_binding/{vs_name}"
+        try:
+            res = session.get(endpoint, headers=headers)
+            if res.status_code == 200:
+                bindings = res.json().get(f"{vs_type}_{pol_type}policy_binding", [])
+                
+                if bindings:
+                    policy_found = True
+                    
+                for b in bindings:
+                    pol_name = b.get('policyname')
+                    priority = b.get('priority', '')
+                    bindpoint = b.get('bindpoint', 'N/A')
+                    goto_expr = b.get('gotopriorityexpression', 'N/A')
+                    
+                    invoke_flag = b.get('invoke', False)
+                    invoke_label = "N/A"
+                    if str(invoke_flag).lower() == 'true':
+                        invoke_label = f"{b.get('labeltype', '')} ({b.get('labelname', '')})"
+                    
+                    rule = "N/A"
+                    action_name = "N/A"
+                    action_type = "N/A"
+                    action_details = "N/A"
+                    
+                    try:
+                        p_res = session.get(f"{base_url}/{pol_type}policy/{pol_name}", headers=headers)
+                        if p_res.status_code == 200:
+                            p_data = p_res.json().get(f"{pol_type}policy", [{}])[0]
+                            rule = p_data.get('rule', 'N/A')
+                            action_name = p_data.get('action', 'N/A')
+                    except: pass
+                    
+                    if action_name not in ["N/A", "NOREWRITE", "DROP", "RESET"]:
+                        try:
+                            a_res = session.get(f"{base_url}/{pol_type}action/{action_name}", headers=headers)
+                            if a_res.status_code == 200:
+                                a_data = a_res.json().get(f"{pol_type}action", [{}])[0]
+                                action_type = str(a_data.get('type', 'N/A'))
+                                
+                                details = []
+                                if a_data.get('target'): details.append(f"Target: {a_data.get('target')}")
+                                if a_data.get('stringbuilderexpr'): details.append(f"Expr: {a_data.get('stringbuilderexpr')}")
+                                action_details = " | ".join(details) if details else "N/A"
+                        except: pass
+                    elif action_name in ["DROP", "RESET", "NOREWRITE"]:
+                        action_type = "Built-in"
+                        action_details = action_name
+                        
+                    policies_list.append({
+                        "Content Switch / Load Balancer": vs_name,
+                        "CS IP / VS IP": vs_info.get("ip", "N/A"),
+                        "CS Port / VS Port": vs_info.get("port", "N/A"),
+                        "CS Protokol / VS Protokol": vs_info.get("protocol", "N/A"),
+                        "Policy": pol_type.capitalize(),
+                        "Policy Type": str(bindpoint),
+                        "Policy Priority": str(priority),
+                        "Policy Name": str(pol_name),
+                        "Expression": str(rule),
+                        "Action Name": str(action_name),
+                        "Action Type": str(action_type),
+                        "Action diğer detayları": str(action_details),
+                        "Goto Expression": str(goto_expr),
+                        "Invoke Label Type": str(invoke_label)
+                    })
+        except:
+            pass
+            
+    if not policy_found:
+        policies_list.append({
+            "Content Switch / Load Balancer": vs_name,
+            "CS IP / VS IP": vs_info.get("ip", "N/A"),
+            "CS Port / VS Port": vs_info.get("port", "N/A"),
+            "CS Protokol / VS Protokol": vs_info.get("protocol", "N/A"),
+            "Policy": "-",
+            "Policy Type": "-",
+            "Policy Priority": "-",
+            "Policy Name": "-",
+            "Expression": "-",
+            "Action Name": "-",
+            "Action Type": "-",
+            "Action diğer detayları": "-",
+            "Goto Expression": "-",
+            "Invoke Label Type": "-"
+        })
+            
+    return policies_list

@@ -62,9 +62,16 @@ def select_companies_menu(sirketler):
         else:
             input("\n[!] Hatalı giriş! (Enter ile devam)...")
 
-def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config):    
+def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config, policy_data, processed_policy_vservers):    
     lb_info = netscaler_api.get_lb_info(session, base_url, headers, lb_name)
     backends = netscaler_api.get_backend_services(session, base_url, headers, lb_name)
+
+    if not backends:
+        backends = [{"name": "Havuz Yok", "ip": "-", "port": "-", "cip": "-"}]
+
+    if lb_name not in processed_policy_vservers:
+        policy_data.extend(netscaler_api.get_vserver_policies(session, base_url, headers, lb_name, "lbvserver", lb_info))
+        processed_policy_vservers.add(lb_name)
     
     lb_to_tag = {item.get("LB"): item.get("TAG") for item in sirket_config.get("AZURE_TAG_LB_ESLESMESI", [])}
 
@@ -172,7 +179,9 @@ def run_reports(selected_company_names):
             continue
         
         report_data = []
-        processed_lbs = set()  
+        policy_data = []
+        processed_lbs = set()
+        processed_policy_vservers = set()
         
         cs_listesi = sirket_config.get("HEDEF_CS_LISTESI", [])
         lb_listesi = sirket_config.get("HEDEF_LB_LISTESI", [])
@@ -185,6 +194,10 @@ def run_reports(selected_company_names):
             if not cs_api_info:
                 print(f"[-] HATA: '{cs_name}' bulunamadı.")
                 continue
+            
+            if cs_name not in processed_policy_vservers:
+                policy_data.extend(netscaler_api.get_vserver_policies(session, base_url, headers, cs_name, "csvserver", cs_api_info))
+                processed_policy_vservers.add(cs_name)
 
             target_lbs = netscaler_api.get_cs_target_lbs(session, base_url, headers, cs_name)
             
@@ -200,11 +213,20 @@ def run_reports(selected_company_names):
                         "pol_pri": "\n".join(p_data["priorities"]),
                         "pol_rule": "\n".join(p_data["rules"])
                     }
-                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config)
+                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers)
                     processed_lbs.add(lb_name)
                 report_data.append(EMPTY_ROW)
             else:
                 print(f"    [!] Hedef LB veya Policy bulunamadı.")
+                report_data.append({
+                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", "Açıklama Yok"),
+                    "CS IP": cs_api_info["ip"], "CS Port": cs_api_info["port"], "CS Protokol": cs_api_info["protocol"],
+                    "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
+                    "Load Balancer": "Hedef Yok", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+                    "Azure Hostname": "-", "Azure Tag": "-"
+                })
+                report_data.append(EMPTY_ROW)
 
         for lb_name in lb_listesi:
             if lb_name in processed_lbs:
@@ -215,7 +237,7 @@ def run_reports(selected_company_names):
                 "name": "N/A", "desc": "Bağımsız VS", "ip": "N/A", "port": "N/A", 
                 "protocol": "N/A", "pol_name": "N/A", "pol_pri": "N/A", "pol_rule": "N/A"
             }
-            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config)
+            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers)
             report_data.append(EMPTY_ROW)
 
         if report_data:
@@ -233,7 +255,7 @@ def run_reports(selected_company_names):
                 print(f"[*] {len(found_datasets)} Dataset bulundu. Çekiliyor...")
                 datasets_data = dataset_manager.fetch_datasets_from_ns(session, base_url, headers, found_datasets)
 
-            excel_exporter.create_excel_report(report_data, fields, excel_path, EMPTY_ROW, sirket_adi, datasets_data)
+            excel_exporter.create_excel_report(report_data, fields, excel_path, EMPTY_ROW, sirket_adi, datasets_data, policy_data)
             print(f"[+] {sirket_adi} Raporu tamamlandi: {excel_path}\n")
         else:
             print(f"[-] Kayit bulunamadi.\n")
