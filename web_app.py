@@ -1,11 +1,13 @@
 import os
 import sys
 import threading
+import html
 from flask import Flask, render_template, request, jsonify, send_file
 import config_manager
 import openpyxl
 from openpyxl.utils.cell import range_boundaries
 import main as core_main
+import azure_manager
 
 app = Flask(__name__, template_folder='web')
 
@@ -162,9 +164,10 @@ def view_excel(filename):
 
                 style_str = f" style='{'; '.join(css_styles)}'" if css_styles else ""
                 attr_str = f" {' '.join(html_attrs)}" if html_attrs else ""
-                
+
                 val = cell.value if cell.value is not None else ""
-                val = str(val).replace('\n', '<br>')
+                val = html.escape(str(val))
+                val = val.replace('\n', '<br>')
                 
                 tables_html += f"<td{attr_str}{style_str}>{val}</td>"
                 
@@ -174,6 +177,48 @@ def view_excel(filename):
         sheets_html[sheet_name] = tables_html
         
     return render_template('excel_web_view.html', sheets=sheets_html, filename=filename)
+
+@app.route('/azure_test')
+def azure_test_page():
+    sirketler = config_manager.load_settings()
+    azure_companies = [c for c, cfg in sirketler.items() if cfg.get("AZURE")]
+    return render_template('azure_test.html', companies=azure_companies)
+
+@app.route('/api/azure_targets', methods=['POST'])
+def api_azure_targets():
+    company = request.json.get('company')
+    if not company:
+        return jsonify({"status": "error", "message": "Şirket seçilmedi."})
+
+    sirketler = config_manager.load_settings()
+    sirket_config = sirketler.get(company, {})
+    
+    if not sirket_config.get("AZURE"):
+        return jsonify({"status": "error", "message": "Bu şirket için Azure aktif değil."})
+
+    az_url = os.getenv(f"{company}_AZURE_SERVER_URL")
+    az_col = os.getenv(f"{company}_AZURE_COLLECTION")
+    az_proj = os.getenv(f"{company}_AZURE_PROJECT")
+    az_dg_id = os.getenv(f"{company}_AZURE_DEPLOYMENT_GROUP_ID")
+    az_pat = os.getenv(f"{company}_AZURE_PAT")
+    
+    if not all([az_url, az_col, az_proj, az_dg_id, az_pat]):
+        return jsonify({"status": "error", "message": "Eksik .env parametreleri. (URL, Proje, Token vb.)"})
+
+    old_stdout = sys.stdout
+    devnull = open(os.devnull, 'w', encoding='utf-8')
+    sys.stdout = devnull
+    
+    try:
+        targets = azure_manager.fetch_azure_deployment_targets(az_url, az_col, az_proj, az_dg_id, az_pat)
+    except Exception as e:
+        sys.stdout = old_stdout
+        devnull.close()
+        return jsonify({"status": "error", "message": str(e)})
+    
+    sys.stdout = old_stdout
+    devnull.close()
+    return jsonify({"status": "success", "data": targets})
 
 def start_server(port):
     print(f"[*] http://127.0.0.1:{port} adresi üzerinde web arayüzü başlatıldı.\n")

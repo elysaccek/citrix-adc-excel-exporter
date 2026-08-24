@@ -39,7 +39,8 @@ def select_companies_menu(sirketler):
         print("\n------------------------------------------")
         print(" İşlemler:")
         print(" [T] Tümünü Seç | [B] Seçimi Bırak")
-        print(" [C] ÇALIŞTIR   | [Q] Çıkış")
+        print(" [C] ÇALIŞTIR (Tam Rapor) | [Z] AZURE LİSTE (Sadece Liste)")
+        print(" [Q] Çıkış")
         print("==========================================")
         
         choice = input("Seçiminiz: ").strip().upper()
@@ -51,7 +52,13 @@ def select_companies_menu(sirketler):
             if not sel:
                 input("\n[!] En az bir şirket seçin! (Enter ile devam)...")
                 continue
-            return sel
+            return sel, 'RUN'
+        elif choice == 'Z':
+            sel = [name for name, is_sel in selected.items() if is_sel]
+            if not sel:
+                input("\n[!] En az bir şirket seçin! (Enter ile devam)...")
+                continue
+            return sel, 'AZURE_LISTE'
         elif choice == 'T':
             for name in selected: selected[name] = True
         elif choice == 'B':
@@ -105,7 +112,7 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag if in_az else "-"
             }
             
-            if not in_az:
+            if not in_az and lb_b["name"] != "Havuz Yok":
                 row["_highlight_lb_red"] = True
                 
             report_data.append(row)
@@ -264,6 +271,38 @@ def run_reports(selected_company_names):
         
     print("[✓] Tüm işlemler başarıyla tamamlandı.\n")
 
+def run_azure_liste(selected_company_names):
+    try:
+        sirketler = config_manager.load_settings()
+    except Exception as e:
+        print(f"[-] Config Hatasi: {e}")
+        return
+
+    sirketler_to_process = {k: v for k, v in sirketler.items() if k in selected_company_names}
+    
+    print("[*] Seçilen şirketler için YALNIZCA AZURE LİSTE başlatılıyor...\n")
+
+    for sirket_adi, sirket_config in sirketler_to_process.items():
+        print(f"==========================================")
+        print(f"[*] {sirket_adi} - AZURE DEVOPS SUNUCULARI")
+        print(f"==========================================")
+
+        if sirket_config.get("AZURE") == True:
+            az_url = os.getenv(f"{sirket_adi}_AZURE_SERVER_URL")
+            az_col = os.getenv(f"{sirket_adi}_AZURE_COLLECTION")
+            az_proj = os.getenv(f"{sirket_adi}_AZURE_PROJECT")
+            az_dg_id = os.getenv(f"{sirket_adi}_AZURE_DEPLOYMENT_GROUP_ID")
+            az_pat = os.getenv(f"{sirket_adi}_AZURE_PAT")
+            
+            if all([az_url, az_col, az_proj, az_dg_id, az_pat]):
+                azure_manager.fetch_azure_deployment_targets(az_url, az_col, az_proj, az_dg_id, az_pat)
+            else:
+                print(f"[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik!\n")
+        else:
+            print(f"[-] {sirket_adi} için settings.json'da AZURE özelliği kapalı (false).\n")
+
+    input("\n[✓] Liste tamamlandı. Ana menüye dönmek için Enter'a basın...")
+
 def main():
     is_web = os.getenv("WEB_VIEW", "False").strip().lower() == "true"
     port_number = os.getenv("PORT")
@@ -272,19 +311,25 @@ def main():
         import web_app
         web_app.start_server(port_number)
     else:
-        try:
-            sirketler = config_manager.load_settings()
-        except Exception as e:
-            print(f"[-] Config Hatasi: {e}")
-            return
+        while True:
+            try:
+                sirketler = config_manager.load_settings()
+            except Exception as e:
+                print(f"[-] Config Hatasi: {e}")
+                return
 
-        if not sirketler:
-            print("[-] settings.json içinde şirket bulunamadı!")
-            return
+            if not sirketler:
+                print("[-] settings.json içinde şirket bulunamadı!")
+                return
 
-        selected_company_names = select_companies_menu(sirketler)
-        clear_screen()
-        run_reports(selected_company_names)
+            selected_company_names, action = select_companies_menu(sirketler)
+            clear_screen()
+            
+            if action == 'RUN':
+                run_reports(selected_company_names)
+                input("\nİşlemler bitti. Devam etmek için Enter'a basın...")
+            elif action == 'AZURE_LISTE':
+                run_azure_liste(selected_company_names)
 
 if __name__ == "__main__":
     main()
