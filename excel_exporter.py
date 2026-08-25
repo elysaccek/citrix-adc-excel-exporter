@@ -73,6 +73,8 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
         
         hl_lb_red = row_data.get("_highlight_lb_red", False)
         hl_az_red = row_data.get("_highlight_azure_red", False)
+        hl_cs_missing = row_data.get("_highlight_cs_red", False)
+        hl_lb_missing = row_data.get("_highlight_lb_missing_red", False)
         
         for col_idx in range(1, len(fields) + 1):
             cell = ws_main.cell(row=current_row, column=col_idx)
@@ -83,6 +85,14 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                 cell.fill = cs_fill
             else:
                 cell.fill = vs_fill
+
+            if hl_cs_missing:
+                cell.fill = red_fill
+                cell.font = red_font
+
+            if hl_lb_missing and col_idx >= 9:
+                cell.fill = red_fill
+                cell.font = red_font
             
             if hl_lb_red and 13 <= col_idx <= 16:
                 cell.fill = red_fill

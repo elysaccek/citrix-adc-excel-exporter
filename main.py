@@ -71,6 +71,21 @@ def select_companies_menu(sirketler):
 
 def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config, policy_data, processed_policy_vservers):    
     lb_info = netscaler_api.get_lb_info(session, base_url, headers, lb_name)
+
+    if not lb_info:
+        print(f"    [!] HATA: '{lb_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.")
+        row = {
+            "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
+            "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
+            "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
+            "Load Balancer": lb_name, "VS IP": "Tanım Bulunmamaktadır", "VS Port": "-", "VS Protokol": "-",
+            "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+            "Azure Hostname": "-", "Azure Tag": "-",
+            "_highlight_lb_missing_red": True
+        }
+        report_data.append(row)
+        return
+
     backends = netscaler_api.get_backend_services(session, base_url, headers, lb_name)
 
     if not backends:
@@ -198,8 +213,19 @@ def run_reports(selected_company_names):
             print(f"[*] CS isleniyor: {cs_name}")
             
             cs_api_info = netscaler_api.get_cs_info(session, base_url, headers, cs_name)
+
             if not cs_api_info:
-                print(f"[-] HATA: '{cs_name}' bulunamadı.")
+                print(f"[-] HATA: '{cs_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.")
+                report_data.append({
+                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", "Açıklama Yok"),
+                    "CS IP": "Tanım Bulunmamaktadır", "CS Port": "-", "CS Protokol": "-",
+                    "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
+                    "Load Balancer": "-", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+                    "Azure Hostname": "-", "Azure Tag": "-",
+                    "_highlight_cs_red": True
+                })
+                report_data.append(EMPTY_ROW)
                 continue
             
             if cs_name not in processed_policy_vservers:

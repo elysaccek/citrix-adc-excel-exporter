@@ -72,7 +72,7 @@ def get_lb_info(session, base_url, headers, lb_name):
             "port": str(info.get("port", "N/A")),
             "protocol": str(info.get("servicetype", "N/A"))
         }
-    return {"ip": "N/A", "port": "N/A", "protocol": "N/A"}
+    return None
 
 def get_cip_info(session, base_url, headers, entity_name, entity_type="service"):
     try:
