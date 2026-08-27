@@ -1,0 +1,119 @@
+/* =========================================
+   GENEL TEMA
+========================================= */
+body { 
+    background-color: #121212; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+.navbar-brand { 
+    font-weight: bold; 
+}
+.card { 
+    border-color: #333; 
+}
+.card-header {
+    border-bottom: 0;
+}
+
+/* =========================================
+   ANA SAYFA
+========================================= */
+.log-box { 
+    background: #000000; 
+    color: #00ff00; 
+    height: 300px; 
+    overflow-y: scroll; 
+    padding: 15px; 
+    font-family: monospace; 
+    border-radius: 5px; 
+    border: 1px solid #333; 
+}
+
+/* =========================================
+   AZURE MODÜLÜ
+========================================= */
+.azure-table-container { 
+    max-height: 70vh; 
+    overflow-y: auto; 
+    border: 1px solid #333; 
+    border-radius: 5px; 
+    background: #1e1e1e; 
+}
+.azure-table-container thead th { 
+    position: sticky; 
+    top: 0; 
+    background-color: #212529 !important; 
+    z-index: 1; 
+    border-bottom: 2px solid #495057; 
+}
+
+/* =========================================
+   AYARLAR (JSON EDİTÖR)
+========================================= */
+#jsonEditor {
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Courier New', Courier, monospace;
+    border: 1px solid #333;
+    border-radius: 5px;
+    padding: 15px;
+    font-size: 14px;
+    resize: vertical;
+}
+#jsonEditor:focus {
+    outline: none;
+    box-shadow: 0 0 5px #0dcaf0;
+    border-color: #0dcaf0;
+}
+
+/* =========================================
+   EXCEL WEB GÖRÜNTÜLEYİCİ
+========================================= */
+.excel-table-container {
+    overflow: auto;
+    background: #1e1e1e;
+    max-height: 80vh;
+    border: 1px solid #495057;
+    border-top: none;
+}
+.excel-table {
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    width: max-content; 
+    color: #212529;
+}
+.excel-table td, .excel-table th {
+    border: 1px solid #495057 !important;
+    padding: 8px 12px;
+    background-color: #ffffff;
+}
+.excel-table tr:first-child td {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* =========================================
+   NAVBAR
+========================================= */
+.nav-tabs {
+    border-bottom: 1px solid #495057;
+}
+.nav-tabs .nav-link {
+    font-weight: bold;
+    color: #adb5bd;
+    background-color: #212529;
+    border-color: #495057;
+    margin-right: 2px;
+}
+.nav-tabs .nav-link:hover {
+    border-color: #495057;
+    color: #fff;
+}
+.nav-tabs .nav-link.active {
+    color: #4ade80; 
+    background-color: #1e1e1e;
+    border-color: #495057;
+    border-bottom-color: #1e1e1e;
+}

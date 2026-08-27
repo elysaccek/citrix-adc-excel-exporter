@@ -21,6 +21,25 @@ def load_settings():
     except json.JSONDecodeError as e:
         raise Exception(f"'{SETTINGS_FILE}' dosyasinin JSON yapisi hatali: {e}")
 
+def get_raw_settings():
+    """Web arayüzündeki editör için JSON dosyasını ham metin olarak okur."""
+    if not os.path.exists(SETTINGS_FILE):
+        return '{\n  "SIRKETLER": {}\n}'
+    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+        return f.read()
+
+def save_raw_settings(json_str):
+    """Web arayüzünden gelen ham JSON metnini doğrular ve kaydeder."""
+    try:
+        json.loads(json_str)
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            f.write(json_str)
+        return True, "Ayarlar başarıyla kaydedildi."
+    except json.JSONDecodeError as e:
+        return False, f"JSON Format Hatası: {e}"
+    except Exception as e:
+        return False, f"Bilinmeyen Hata: {e}"
+
 def get_report_filepath(company_name):
     ensure_report_dir()
     date_str = datetime.now().strftime("%Y-%m-%d")

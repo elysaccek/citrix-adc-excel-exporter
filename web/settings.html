@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="tr" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Ayarlar (settings.json)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 border-bottom border-secondary">
+        <div class="container">
+            <a class="navbar-brand" href="/">Citrix NLB Raporlama Paneli</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link text-white fw-bold me-3" href="/">Ana Sayfa</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-info fw-bold me-3" href="/azure_modulu">Azure Modülü</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-warning fw-bold" href="/settings">Ayarlar (JSON)</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card shadow-sm mb-4 border-secondary">
+                    <div class="card-header bg-warning text-dark fw-bold border-bottom-0 d-flex justify-content-between align-items-center">
+                        <span>settings.json Yapılandırma Editörü</span>
+                        <button type="button" class="btn btn-sm btn-dark" onclick="loadSettings()">Yenile</button>
+                    </div>
+                    <div class="card-body bg-body-tertiary">
+                        <div class="alert alert-secondary small mb-3 border-secondary text-light bg-dark">
+                            <strong>Bilgi:</strong> JSON formatına dikkat ediniz. Yanlış virgül veya tırnak eksiği sistemde okuma hatasına yol açabilir. Düzenlemeniz bittiğinde sağ alt köşedeki "Kaydet" butonuna tıklayınız.
+                        </div>
+                        <div class="mb-3">
+                            <textarea id="jsonEditor" class="form-control" rows="25" spellcheck="false" placeholder="Yükleniyor..."></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-success fw-bold px-4" onclick="saveSettings()" id="btnSave">Kaydet</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", loadSettings);
+
+        document.getElementById('jsonEditor').addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+            }
+        });
+
+        function loadSettings() {
+            fetch('/api/settings')
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('jsonEditor').value = data.data;
+                } else {
+                    alert("Ayarlar yüklenemedi: " + data.message);
+                }
+            })
+            .catch(err => alert("Ağ hatası: Ayarlar çekilemedi."));
+        }
+
+        function saveSettings() {
+            const btn = document.getElementById('btnSave');
+            const jsonData = document.getElementById('jsonEditor').value;
+
+            try {
+                JSON.parse(jsonData);
+            } catch (e) {
+                alert("Geçersiz JSON Formatı!\nDetay: " + e.message);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Kaydediliyor...";
+
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings_data: jsonData })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerText = "Kaydet";
+                
+                if (data.status === 'success') {
+                    alert("Kayıt Başarılı: " + data.message);
+                } else {
+                    alert("Kayıt Başarısız!\n" + data.message);
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerText = "Kaydet";
+                alert("Ağ hatası: Sunucuya ulaşılamadı.");
+            });
+        }
+    </script>
+</body>
+</html>

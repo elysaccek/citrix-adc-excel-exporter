@@ -9,7 +9,7 @@ from openpyxl.utils.cell import range_boundaries
 import main as core_main
 import azure_manager
 
-app = Flask(__name__, template_folder='web')
+app = Flask(__name__, template_folder='web', static_folder='web/static')
 
 class LogCapture:
     def __init__(self):
@@ -178,11 +178,11 @@ def view_excel(filename):
         
     return render_template('excel_web_view.html', sheets=sheets_html, filename=filename)
 
-@app.route('/azure_test')
-def azure_test_page():
+@app.route('/azure_modulu')
+def azure_modulu_page():
     sirketler = config_manager.load_settings()
     azure_companies = [c for c, cfg in sirketler.items() if cfg.get("AZURE")]
-    return render_template('azure_test.html', companies=azure_companies)
+    return render_template('azure_modulu.html', companies=azure_companies)
 
 @app.route('/api/azure_targets', methods=['POST'])
 def api_azure_targets():
@@ -219,6 +219,28 @@ def api_azure_targets():
     sys.stdout = old_stdout
     devnull.close()
     return jsonify({"status": "success", "data": targets})
+
+@app.route('/settings')
+def settings_page():
+    return render_template('settings.html')
+
+@app.route('/api/settings', methods=['GET'])
+def api_get_settings():
+    try:
+        raw_json = config_manager.get_raw_settings()
+        return jsonify({"status": "success", "data": raw_json})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/api/settings', methods=['POST'])
+def api_save_settings():
+    json_str = request.json.get('settings_data', '')
+    success, message = config_manager.save_raw_settings(json_str)
+    
+    if success:
+        return jsonify({"status": "success", "message": message})
+    else:
+        return jsonify({"status": "error", "message": message})
 
 def start_server(port):
     print(f"[*] http://127.0.0.1:{port} adresi üzerinde web arayüzü başlatıldı.\n")
