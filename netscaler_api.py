@@ -86,6 +86,18 @@ def get_cip_info(session, base_url, headers, entity_name, entity_type="service")
         pass
     return "N/A"
 
+def get_monitor_info(session, base_url, headers, entity_name, entity_type="service"):
+    try:
+        res = session.get(f"{base_url}/{entity_type}_lbmonitor_binding/{entity_name}", headers=headers)
+        if res.status_code == 200:
+            bindings = res.json().get(f"{entity_type}_lbmonitor_binding", [])
+            monitors = [b.get("monitor_name") for b in bindings if b.get("monitor_name")]
+            if monitors:
+                return "\n".join(monitors)
+    except:
+        pass
+    return "N/A"
+
 def get_backend_services(session, base_url, headers, lb_name):
     backends = []
     
@@ -97,7 +109,8 @@ def get_backend_services(session, base_url, headers, lb_name):
                 "name": svc_name,
                 "ip": svc.get("ipv46", "N/A"),
                 "port": str(svc.get("port", "")),
-                "cip": get_cip_info(session, base_url, headers, svc_name, "service")
+                "cip": get_cip_info(session, base_url, headers, svc_name, "service"),
+                "monitor": get_monitor_info(session, base_url, headers, svc_name, "service")
             })
 
     grp_res = session.get(f"{base_url}/lbvserver_servicegroup_binding/{lb_name}", headers=headers)
@@ -108,7 +121,8 @@ def get_backend_services(session, base_url, headers, lb_name):
                 "name": grp_name,
                 "ip": grp.get("ipv46", "N/A"),
                 "port": str(grp.get("port", "")),
-                "cip": get_cip_info(session, base_url, headers, grp_name, "servicegroup")
+                "cip": get_cip_info(session, base_url, headers, grp_name, "servicegroup"),
+                "monitor": get_monitor_info(session, base_url, headers, grp_name, "servicegroup")
             })
 
     sorted_backends = sorted(backends, key=lambda k: k["name"].lower())

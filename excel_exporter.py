@@ -94,11 +94,11 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                 cell.fill = red_fill
                 cell.font = red_font
             
-            if hl_lb_red and 13 <= col_idx <= 16:
+            if hl_lb_red and 13 <= col_idx <= 17:
                 cell.fill = red_fill
                 cell.font = red_font
                 
-            if hl_az_red and 17 <= col_idx <= 18:
+            if hl_az_red and 18 <= col_idx <= 19:
                 cell.fill = red_fill
                 cell.font = red_font
                 

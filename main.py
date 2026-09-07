@@ -14,7 +14,7 @@ EMPTY_ROW = {
     "Content Switch": "", "CS Aciklama": "", "CS IP": "", "CS Port": "", "CS Protokol": "",
     "CS Policy Name": "", "CS Policy Priority": "", "CS Policy Rule": "",
     "Load Balancer": "", "VS IP": "", "VS Port": "", "VS Protokol": "",
-    "Backend Server": "", "IP Adresi": "", "Port": "", "CIP": "",
+    "Backend Server": "", "IP Adresi": "", "Port": "", "CIP": "", "Monitor Rule": "",
     "Azure Hostname": "", "Azure Tag": ""
 }
 
@@ -79,7 +79,7 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
             "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
             "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
             "Load Balancer": lb_name, "VS IP": "Tanım Bulunmamaktadır", "VS Port": "-", "VS Protokol": "-",
-            "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+            "Backend Server": "-", "IP Address": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
             "Azure Hostname": "-", "Azure Tag": "-",
             "_highlight_lb_missing_red": True
         }
@@ -89,7 +89,7 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
     backends = netscaler_api.get_backend_services(session, base_url, headers, lb_name)
 
     if not backends:
-        backends = [{"name": "Havuz Yok", "ip": "-", "port": "-", "cip": "-"}]
+        backends = [{"name": "Havuz Yok", "ip": "-", "port": "-", "cip": "-", "monitor": "-"}]
 
     if lb_name not in processed_policy_vservers:
         policy_data.extend(netscaler_api.get_vserver_policies(session, base_url, headers, lb_name, "lbvserver", lb_info))
@@ -123,7 +123,7 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
                 "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
                 "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"],
+                "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"], "Monitor Rule": lb_b.get("monitor", "-"),
                 "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag if in_az else "-"
             }
             
@@ -134,13 +134,13 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
             
         for az_hostname, az_b in az_matches.items():
             if az_hostname not in matched_az:
-                lb_b = {"name": "-", "ip": "-", "port": "-", "cip": "-"}
+                lb_b = {"name": "-", "ip": "-", "port": "-", "cip": "-", "monitor": "-"}
                 row = {
                     "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
                     "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
                     "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
                     "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                    "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"],
+                    "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"], "Monitor Rule": lb_b["monitor"],
                     "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag
                 }
                 row["_highlight_azure_red"] = True
@@ -153,7 +153,7 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
                 "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
                 "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                "Backend Server": backend["name"], "IP Adresi": backend["ip"], "Port": backend["port"], "CIP": backend["cip"],
+                "Backend Server": backend["name"], "IP Adresi": backend["ip"], "Port": backend["port"], "CIP": backend["cip"], "Monitor Rule": backend.get("monitor", "-"),
                 "Azure Hostname": "", "Azure Tag": ""
             })
 
@@ -221,7 +221,7 @@ def run_reports(selected_company_names):
                     "CS IP": "Tanım Bulunmamaktadır", "CS Port": "-", "CS Protokol": "-",
                     "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
                     "Load Balancer": "-", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
-                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
                     "Azure Hostname": "-", "Azure Tag": "-",
                     "_highlight_cs_red": True
                 })
@@ -256,7 +256,7 @@ def run_reports(selected_company_names):
                     "CS IP": cs_api_info["ip"], "CS Port": cs_api_info["port"], "CS Protokol": cs_api_info["protocol"],
                     "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
                     "Load Balancer": "Hedef Yok", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
-                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
                     "Azure Hostname": "-", "Azure Tag": "-"
                 })
                 report_data.append(EMPTY_ROW)
