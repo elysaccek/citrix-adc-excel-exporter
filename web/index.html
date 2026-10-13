@@ -2,27 +2,27 @@
 <html lang="tr" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Citrix NLB Raporlama Paneli</title>
+    <title>{{ _('web.index.title') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 border-bottom border-secondary">
         <div class="container">
-            <a class="navbar-brand" href="/">Citrix NLB Raporlama & Denetim Paneli</a>
+            <a class="navbar-brand" href="/">{{ _('web.index.navbar_brand') }}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link text-white fw-bold me-3" href="/">Ana Sayfa</a>
+                        <a class="nav-link text-white fw-bold me-3" href="/">{{ _('web.index.nav_home') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-info fw-bold me-3" href="/azure_modulu">Azure Modülü</a>
+                        <a class="nav-link text-info fw-bold me-3" href="/azure_modulu">{{ _('web.index.nav_azure') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-warning fw-bold" href="/settings">Ayarlar (JSON)</a>
+                        <a class="nav-link text-warning fw-bold" href="/settings">{{ _('web.index.nav_settings') }}</a>
                     </li>
                 </ul>
             </div>
@@ -33,11 +33,11 @@
             <div class="col-md-6 mb-4">
                 <div class="card shadow-sm mb-4 border-secondary">
                     <div class="card-header bg-primary text-white">
-                        <h5 class="card-title mb-0">Rapor Başlat</h5>
+                        <h5 class="card-title mb-0">{{ _('web.index.card_start_report') }}</h5>
                     </div>
                     <div class="card-body bg-body-tertiary">
                         <form id="runForm">
-                            <h6 class="text-light">Şirket / Proje Seçin:</h6>
+                            <h6 class="text-light">{{ _('web.index.select_project') }}</h6>
                             <div class="row mb-3">
                                 {% for company in companies %}
                                 <div class="col-6">
@@ -48,17 +48,17 @@
                                 </div>
                                 {% endfor %}
                             </div>
-                            <button type="button" class="btn btn-success fw-bold w-100" onclick="startReport()" id="btnRun">Seçili Olanları Çalıştır</button>
+                            <button type="button" class="btn btn-success fw-bold w-100" onclick="startReport()" id="btnRun">{{ _('web.index.btn_run_selected') }}</button>
                         </form>
                     </div>
                 </div>
 
                 <div class="card shadow-sm border-secondary">
                     <div class="card-header bg-secondary text-white">
-                        <h5 class="card-title mb-0">Canlı Loglar</h5>
+                        <h5 class="card-title mb-0">{{ _('web.index.card_live_logs') }}</h5>
                     </div>
                     <div class="card-body p-0">
-                        <div class="log-box" id="logView">İşlem bekleniyor...</div>
+                        <div class="log-box" id="logView">{{ _('web.index.waiting_for_action') }}</div>
                     </div>
                 </div>
             </div>
@@ -66,7 +66,7 @@
             <div class="col-md-6">
                 <div class="card shadow-sm border-secondary">
                     <div class="card-header bg-secondary text-white">
-                        <h5 class="card-title mb-0">Üretilen Excel Raporları</h5>
+                        <h5 class="card-title mb-0">{{ _('web.index.card_reports') }}</h5>
                     </div>
                     <div class="card-body bg-body-tertiary">
                         <div class="accordion" id="reportsAccordion">
@@ -74,7 +74,7 @@
                             <div class="accordion-item border-secondary">
                                 <h2 class="accordion-header">
                                     <button class="accordion-button collapsed fw-bold text-info bg-dark" type="button" data-bs-toggle="collapse" data-bs-target="#col_{{ loop.index }}">
-                                        {{ company }} ({{ file_list|length }} Rapor)
+                                        {{ company }} ({{ file_list|length }} {{ _('web.index.report_count') }})
                                     </button>
                                 </h2>
                                 <div id="col_{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#reportsAccordion">
@@ -84,8 +84,8 @@
                                             <li class="list-group-item d-flex justify-content-between align-items-center bg-body">
                                                 <span class="small">{{ file }}</span>
                                                 <div class="btn-group btn-group-sm">
-                                                    <a href="/view/{{ file }}" target="_blank" class="btn btn-outline-info">Görüntüle</a>
-                                                    <a href="/download/{{ file }}" class="btn btn-outline-success">İndir</a>
+                                                    <a href="/view/{{ file }}" target="_blank" class="btn btn-outline-info">{{ _('web.index.btn_view') }}</a>
+                                                    <a href="/download/{{ file }}" class="btn btn-outline-success">{{ _('web.index.btn_download') }}</a>
                                                 </div>
                                             </li>
                                             {% endfor %}
@@ -95,7 +95,7 @@
                             </div>
                             {% endfor %}
                             {% if not reports %}
-                            <div class="alert alert-warning mb-0 text-dark">Henüz üretilmiş bir rapor bulunmuyor.</div>
+                            <div class="alert alert-warning mb-0 text-dark">{{ _('web.index.no_reports') }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -104,18 +104,35 @@
         </div>
     </div>
 
+    <div id="i18n-data" 
+         data-err-min-one="{{ _('web.index.js_err_min_one') }}"
+         data-status-running="{{ _('web.index.js_status_running') }}"
+         data-status-starting="{{ _('web.index.js_status_starting') }}"
+         data-btn-run-selected="{{ _('web.index.btn_run_selected') }}"
+         data-all-done-flag="{{ _('web.index.js_all_done_flag') }}"
+         style="display: none;">
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const i18nDataEl = document.getElementById('i18n-data');
+        const i18n = {
+            errMinOne: i18nDataEl.getAttribute('data-err-min-one'),
+            statusRunning: i18nDataEl.getAttribute('data-status-running'),
+            statusStarting: i18nDataEl.getAttribute('data-status-starting'),
+            btnRunSelected: i18nDataEl.getAttribute('data-btn-run-selected'),
+            allDoneFlag: i18nDataEl.getAttribute('data-all-done-flag')
+        };
         let logTimer = null;
         function startReport() {
             let selected = [];
             document.querySelectorAll('.company-cb:checked').forEach(cb => selected.push(cb.value));
             
-            if(selected.length === 0) { alert("Lütfen en az bir şirket seçin!"); return; }
+            if(selected.length === 0) { alert(i18n.errMinOne); return; }
 
             document.getElementById('btnRun').disabled = true;
-            document.getElementById('btnRun').innerText = "Çalışıyor...";
-            document.getElementById('logView').innerText = "İşlem başlatılıyor...\n";
+            document.getElementById('btnRun').innerText = i18n.statusRunning;
+            document.getElementById('logView').innerText = i18n.statusStarting;
 
             fetch('/run', {
                 method: 'POST',
@@ -129,7 +146,7 @@
                 } else {
                     alert(data.message);
                     document.getElementById('btnRun').disabled = false;
-                    document.getElementById('btnRun').innerText = "Seçili Olanları Çalıştır";
+                    document.getElementById('btnRun').innerText = i18n.btnRunSelected;
                 }
             });
         }
@@ -141,10 +158,10 @@
                 logBox.innerText = data.logs;
                 logBox.scrollTop = logBox.scrollHeight;
                 
-                if(!data.is_running && data.logs.includes("Tüm işlemler başarıyla tamamlandı")) {
+                if(!data.is_running && data.logs.includes(i18n.allDoneFlag)) {
                     clearInterval(logTimer);
                     document.getElementById('btnRun').disabled = false;
-                    document.getElementById('btnRun').innerText = "Seçili Olanları Çalıştır";
+                    document.getElementById('btnRun').innerText = i18n.btnRunSelected;
                     setTimeout(() => location.reload(), 2500); 
                 }
             });

@@ -2,27 +2,27 @@
 <html lang="tr" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Ayarlar (settings.json)</title>
+    <title>{{ _('web.settings.title') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 border-bottom border-secondary">
         <div class="container">
-            <a class="navbar-brand" href="/">Citrix NLB Raporlama Paneli</a>
+            <a class="navbar-brand" href="/">{{ _('web.index.navbar_brand') }}</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link text-white fw-bold me-3" href="/">Ana Sayfa</a>
+                        <a class="nav-link text-white fw-bold me-3" href="/">{{ _('web.index.nav_home') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-info fw-bold me-3" href="/azure_modulu">Azure Modülü</a>
+                        <a class="nav-link text-info fw-bold me-3" href="/azure_modulu">{{ _('web.index.nav_azure') }}</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-warning fw-bold" href="/settings">Ayarlar (JSON)</a>
+                        <a class="nav-link text-warning fw-bold" href="/settings">{{ _('web.index.nav_settings') }}</a>
                     </li>
                 </ul>
             </div>
@@ -34,18 +34,18 @@
             <div class="col-md-12">
                 <div class="card shadow-sm mb-4 border-secondary">
                     <div class="card-header bg-warning text-dark fw-bold border-bottom-0 d-flex justify-content-between align-items-center">
-                        <span>settings.json Yapılandırma Editörü</span>
-                        <button type="button" class="btn btn-sm btn-dark" onclick="loadSettings()">Yenile</button>
+                        <span>{{ _('web.settings.card_header') }}</span>
+                        <button type="button" class="btn btn-sm btn-dark" onclick="loadSettings()">{{ _('web.settings.btn_refresh') }}</button>
                     </div>
                     <div class="card-body bg-body-tertiary">
                         <div class="alert alert-secondary small mb-3 border-secondary text-light bg-dark">
-                            <strong>Bilgi:</strong> JSON formatına dikkat ediniz. Yanlış virgül veya tırnak eksiği sistemde okuma hatasına yol açabilir. Düzenlemeniz bittiğinde sağ alt köşedeki "Kaydet" butonuna tıklayınız.
+                            <strong>{{ _('web.settings.alert_info') }}</strong> {{ _('web.settings.alert_desc') }}
                         </div>
                         <div class="mb-3">
-                            <textarea id="jsonEditor" class="form-control" rows="25" spellcheck="false" placeholder="Yükleniyor..."></textarea>
+                            <textarea id="jsonEditor" class="form-control" rows="25" spellcheck="false" placeholder="{{ _('web.settings.editor_placeholder') }}"></textarea>
                         </div>
                         <div class="d-flex justify-content-end">
-                            <button type="button" class="btn btn-success fw-bold px-4" onclick="saveSettings()" id="btnSave">Kaydet</button>
+                            <button type="button" class="btn btn-success fw-bold px-4" onclick="saveSettings()" id="btnSave">{{ _('web.settings.btn_save') }}</button>
                         </div>
                     </div>
                 </div>
@@ -53,6 +53,19 @@
         </div>
     </div>
 
+    <!-- JS için çeviriler -->
+    <script>
+        const i18nSettings = {
+            errLoadFail: "{{ _('web.settings.js_err_load_fail') }}",
+            errNetworkLoad: "{{ _('web.settings.js_err_network_load') }}",
+            errInvalidJson: "{{ _('web.settings.js_err_invalid_json') }}",
+            statusSaving: "{{ _('web.settings.js_status_saving') }}",
+            successSave: "{{ _('web.settings.js_success_save') }}",
+            errSaveFail: "{{ _('web.settings.js_err_save_fail') }}",
+            errNetworkSave: "{{ _('web.settings.js_err_network_save') }}",
+            btnSaveTxt: "{{ _('web.settings.btn_save') }}"
+        };
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", loadSettings);
@@ -74,10 +87,10 @@
                 if (data.status === 'success') {
                     document.getElementById('jsonEditor').value = data.data;
                 } else {
-                    alert("Ayarlar yüklenemedi: " + data.message);
+                    alert(i18nSettings.errLoadFail + data.message);
                 }
             })
-            .catch(err => alert("Ağ hatası: Ayarlar çekilemedi."));
+            .catch(err => alert(i18nSettings.errNetworkLoad));
         }
 
         function saveSettings() {
@@ -87,12 +100,12 @@
             try {
                 JSON.parse(jsonData);
             } catch (e) {
-                alert("Geçersiz JSON Formatı!\nDetay: " + e.message);
+                alert(i18nSettings.errInvalidJson + e.message);
                 return;
             }
 
             btn.disabled = true;
-            btn.innerText = "Kaydediliyor...";
+            btn.innerText = i18nSettings.statusSaving;
 
             fetch('/api/settings', {
                 method: 'POST',
@@ -102,18 +115,18 @@
             .then(r => r.json())
             .then(data => {
                 btn.disabled = false;
-                btn.innerText = "Kaydet";
+                btn.innerText = i18nSettings.btnSaveTxt;
                 
                 if (data.status === 'success') {
-                    alert("Kayıt Başarılı: " + data.message);
+                    alert(i18nSettings.successSave + data.message);
                 } else {
-                    alert("Kayıt Başarısız!\n" + data.message);
+                    alert(i18nSettings.errSaveFail + data.message);
                 }
             })
             .catch(err => {
                 btn.disabled = false;
-                btn.innerText = "Kaydet";
-                alert("Ağ hatası: Sunucuya ulaşılamadı.");
+                btn.innerText = i18nSettings.btnSaveTxt;
+                alert(i18nSettings.errNetworkSave);
             });
         }
     </script>

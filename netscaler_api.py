@@ -66,25 +66,31 @@ def get_cs_info(session, base_url, headers, cs_name):
 def get_lb_info(session, base_url, headers, lb_name):
     res = session.get(f"{base_url}/lbvserver/{lb_name}", headers=headers)
     if res.status_code == 200:
-        info = res.json().get("lbvserver", [{}])[0]
+        info = res.json().get("lbvserver", [{}])[0]        
         return {
             "ip": str(info.get("ipv46", "N/A")),
             "port": str(info.get("port", "N/A")),
-            "protocol": str(info.get("servicetype", "N/A"))
+            "protocol": str(info.get("servicetype", "N/A")),
+            "persistence": info.get("persistencetype", "N/A"),
+            "persistence_timeout": info.get("timeout", "N/A"),
+            "cookie_name": info.get("cookiename") or "",
+            "backup_persistence": info.get("persistencebackup", "N/A"),
+            "backup_persistence_timeout": info.get(
+                "backuppersistencetimeout", "N/A"
+            ),
+            "ipv4_netmask": (
+                info.get("netmask")
+                or info.get("persistmask")
+                or "N/A"
+            ),
+            "ipv6_mask_length": (
+                info.get("v6netmasklen")
+                or info.get("v6persistmasklen")
+                or "N/A"
+            )
         }
-    return None
 
-def get_cip_info(session, base_url, headers, entity_name, entity_type="service"):
-    try:
-        res = session.get(f"{base_url}/{entity_type}/{entity_name}", headers=headers)
-        if res.status_code == 200:
-            info = res.json().get(entity_type, [{}])[0]
-            if info.get("cip", "DISABLED") == "ENABLED":
-                return info.get("cipheader") or "ENABLED (Header Yok)"
-            return "DISABLE"
-    except:
-        pass
-    return "N/A"
+    return None
 
 def get_monitor_info(session, base_url, headers, entity_name, entity_type="service"):
     try:
@@ -98,6 +104,44 @@ def get_monitor_info(session, base_url, headers, entity_name, entity_type="servi
         pass
     return "N/A"
 
+def get_service_details(session, base_url, headers, entity_name, entity_type="service"):
+    defaults = {
+        "sp": "N/A", "useproxyport": "N/A", "downstateflush": "N/A", "accessdown": "N/A",
+        "usip": "N/A", "cka": "N/A", "tcpb": "N/A", "cmp": "N/A",
+        "cip": "N/A", "cipheader": "N/A", "maxbandwidth": "N/A", "monthreshold": "N/A",
+        "maxreq": "N/A", "maxclient": "N/A", "clttimeout": "N/A", "svrtimeout": "N/A"
+    }
+    
+    try:
+        res = session.get(f"{base_url}/{entity_type}/{entity_name}", headers=headers)
+        if res.status_code == 200:
+            info = res.json().get(entity_type, [{}])[0]
+            
+            cip_status = info.get("cip", "DISABLED")
+            cip_display = info.get("cipheader") or "Header Yok" if cip_status == "ENABLED" else "-"
+            
+            return {
+                "sp": info.get("sp", "N/A"),
+                "useproxyport": info.get("useproxyport", "N/A"),
+                "downstateflush": info.get("downstateflush", "N/A"),
+                "accessdown": info.get("accessdown", "N/A"),
+                "usip": info.get("usip", "N/A"),
+                "cka": info.get("cka", "N/A"),
+                "tcpb": info.get("tcpb", "N/A"),
+                "cmp": info.get("cmp", "N/A"),
+                "cip": cip_status,
+                "cipheader": cip_display,
+                "maxbandwidth": str(info.get("maxbandwidth", "N/A")),
+                "monthreshold": str(info.get("monthreshold", "N/A")),
+                "maxreq": str(info.get("maxreq", "N/A")),
+                "maxclient": str(info.get("maxclient", "N/A")),
+                "clttimeout": str(info.get("clttimeout", "N/A")),
+                "svrtimeout": str(info.get("svrtimeout", "N/A"))
+            }
+    except:
+        pass
+    return defaults
+
 def get_backend_services(session, base_url, headers, lb_name):
     backends = []
     
@@ -105,25 +149,31 @@ def get_backend_services(session, base_url, headers, lb_name):
     if svc_res.status_code == 200:
         for svc in svc_res.json().get("lbvserver_service_binding", []):
             svc_name = svc.get("servicename")
-            backends.append({
+            details = get_service_details(session, base_url, headers, svc_name, "service")
+            backend_data = {
                 "name": svc_name,
                 "ip": svc.get("ipv46", "N/A"),
                 "port": str(svc.get("port", "")),
-                "cip": get_cip_info(session, base_url, headers, svc_name, "service"),
+                "cip": details["cip"] if details["cip"] == "DISABLED" else details["cipheader"],
                 "monitor": get_monitor_info(session, base_url, headers, svc_name, "service")
-            })
+            }
+            backend_data.update(details) # Servis detaylarını sözlüğe ekle
+            backends.append(backend_data)
 
     grp_res = session.get(f"{base_url}/lbvserver_servicegroup_binding/{lb_name}", headers=headers)
     if grp_res.status_code == 200:
         for grp in grp_res.json().get("lbvserver_servicegroup_binding", []):
             grp_name = grp.get("servicegroupname")
-            backends.append({
+            details = get_service_details(session, base_url, headers, grp_name, "servicegroup")
+            backend_data = {
                 "name": grp_name,
                 "ip": grp.get("ipv46", "N/A"),
                 "port": str(grp.get("port", "")),
-                "cip": get_cip_info(session, base_url, headers, grp_name, "servicegroup"),
+                "cip": details["cip"] if details["cip"] == "DISABLED" else details["cipheader"],
                 "monitor": get_monitor_info(session, base_url, headers, grp_name, "servicegroup")
-            })
+            }
+            backend_data.update(details) # Servis detaylarını sözlüğe ekle
+            backends.append(backend_data)
 
     sorted_backends = sorted(backends, key=lambda k: k["name"].lower())
             

@@ -7,6 +7,7 @@ import config_manager
 import excel_exporter
 import dataset_manager
 import azure_manager
+from language_manager import _  
 
 load_dotenv()
 
@@ -14,8 +15,15 @@ EMPTY_ROW = {
     "Content Switch": "", "CS Aciklama": "", "CS IP": "", "CS Port": "", "CS Protokol": "",
     "CS Policy Name": "", "CS Policy Priority": "", "CS Policy Rule": "",
     "Load Balancer": "", "VS IP": "", "VS Port": "", "VS Protokol": "",
-    "Backend Server": "", "IP Adresi": "", "Port": "", "CIP": "", "Monitor Rule": "",
-    "Azure Hostname": "", "Azure Tag": ""
+    "Backend Server": "", "IP Adresi": "", "Port": "",
+    "Azure Hostname": "", "Azure Tag": "",
+    "Persistence": "",
+    "Time-out (mins)": "",
+    "Cookie Name": "",
+    "Backup Persistence": "",
+    "Backup Time-out (mins)": "",
+    "IPv4 Netmask": "",
+    "IPv6 Mask Length": ""
 }
 
 def clear_screen():
@@ -28,35 +36,35 @@ def select_companies_menu(sirketler):
     while True:
         clear_screen()
         print("==========================================")
-        print("      CITRIX NLB RAPORLAMA PANELİ         ")
+        print(f"      {_('menu.header_title')}         ")
         print("==========================================")
-        print("Çalıştırmak istediğiniz şirketleri seçin:\n")
+        print(f"{_('menu.select_companies')}\n")
         
         for i, name in enumerate(company_names, 1):
             mark = "X" if selected[name] else " "
             print(f" [{mark}] {i}. {name}")
             
         print("\n------------------------------------------")
-        print(" İşlemler:")
-        print(" [T] Tümünü Seç | [B] Seçimi Bırak")
-        print(" [C] ÇALIŞTIR (Tam Rapor) | [Z] AZURE LİSTE (Sadece Liste)")
-        print(" [Q] Çıkış")
+        print(f" {_('menu.actions')}")
+        print(f" {_('menu.select_all')}")
+        print(f" {_('menu.run')}")
+        print(f" {_('menu.quit')}")
         print("==========================================")
         
-        choice = input("Seçiminiz: ").strip().upper()
+        choice = input(_('menu.choice')).strip().upper()
         
         if choice == 'Q':
             exit(0)
         elif choice == 'C':
             sel = [name for name, is_sel in selected.items() if is_sel]
             if not sel:
-                input("\n[!] En az bir şirket seçin! (Enter ile devam)...")
+                input(_('error.min_one_company'))
                 continue
             return sel, 'RUN'
         elif choice == 'Z':
             sel = [name for name, is_sel in selected.items() if is_sel]
             if not sel:
-                input("\n[!] En az bir şirket seçin! (Enter ile devam)...")
+                input(_('error.min_one_company'))
                 continue
             return sel, 'AZURE_LISTE'
         elif choice == 'T':
@@ -67,29 +75,44 @@ def select_companies_menu(sirketler):
             name = company_names[int(choice) - 1]
             selected[name] = not selected[name]
         else:
-            input("\n[!] Hatalı giriş! (Enter ile devam)...")
+            input(_('error.invalid_input'))
 
-def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config, policy_data, processed_policy_vservers):    
+def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_servers, sirket_config, policy_data, processed_policy_vservers, services_data):    
     lb_info = netscaler_api.get_lb_info(session, base_url, headers, lb_name)
 
     if not lb_info:
-        print(f"    [!] HATA: '{lb_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.")
+        print(_('error.lb_not_found', lb_name=lb_name))
         row = {
             "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
             "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
             "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
-            "Load Balancer": lb_name, "VS IP": "Tanım Bulunmamaktadır", "VS Port": "-", "VS Protokol": "-",
-            "Backend Server": "-", "IP Address": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
+            "Load Balancer": lb_name, "VS IP": _('value.no_definition'), "VS Port": "-", "VS Protokol": "-",
+            "Backend Server": "-", "IP Adresi": "-", "Port": "-",
             "Azure Hostname": "-", "Azure Tag": "-",
             "_highlight_lb_missing_red": True
         }
         report_data.append(row)
         return
 
+    persistence_fields = {
+        "Persistence": lb_info.get("persistence", "N/A"),
+        "Time-out (mins)": lb_info.get("persistence_timeout", "N/A"),
+        "Cookie Name": lb_info.get("cookie_name", ""),
+        "Backup Persistence": lb_info.get("backup_persistence", "N/A"),
+        "Backup Time-out (mins)": lb_info.get(
+            "backup_persistence_timeout", "N/A"
+        ),
+        "IPv4 Netmask": lb_info.get("ipv4_netmask", "N/A"),
+        "IPv6 Mask Length": lb_info.get("ipv6_mask_length", "N/A")
+    }
     backends = netscaler_api.get_backend_services(session, base_url, headers, lb_name)
 
     if not backends:
-        backends = [{"name": "Havuz Yok", "ip": "-", "port": "-", "cip": "-", "monitor": "-"}]
+        backends = [{"name": _('value.no_pool'), "ip": "-", "port": "-", "cip": "-"}]
+
+    for backend in backends:
+        if backend["name"] != _('value.no_pool') and backend["name"] not in services_data:
+            services_data[backend["name"]] = backend
 
     if lb_name not in processed_policy_vservers:
         policy_data.extend(netscaler_api.get_vserver_policies(session, base_url, headers, lb_name, "lbvserver", lb_info))
@@ -123,54 +146,71 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
                 "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
                 "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
                 "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"], "Monitor Rule": lb_b.get("monitor", "-"),
+                "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"],
                 "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag if in_az else "-"
             }
+
+            row.update(persistence_fields)
             
-            if not in_az and lb_b["name"] != "Havuz Yok":
+            if not in_az and lb_b["name"] != _('value.no_pool'):
                 row["_highlight_lb_red"] = True
                 
             report_data.append(row)
             
         for az_hostname, az_b in az_matches.items():
             if az_hostname not in matched_az:
-                lb_b = {"name": "-", "ip": "-", "port": "-", "cip": "-", "monitor": "-"}
+                lb_b = {"name": "-", "ip": "-", "port": "-", "cip": "-"}
                 row = {
                     "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
                     "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
                     "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
                     "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                    "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"], "CIP": lb_b["cip"], "Monitor Rule": lb_b["monitor"],
+                    "Backend Server": lb_b["name"], "IP Adresi": lb_b["ip"], "Port": lb_b["port"],
                     "Azure Hostname": az_b["ServerName"], "Azure Tag": expected_tag
                 }
+                row.update(persistence_fields)
                 row["_highlight_azure_red"] = True
                 report_data.append(row)
                 
     else:
         for backend in backends:
-            report_data.append({
-                "Content Switch": cs_info["name"], "CS Aciklama": cs_info["desc"],
-                "CS IP": cs_info["ip"], "CS Port": cs_info["port"], "CS Protokol": cs_info["protocol"],
-                "CS Policy Name": cs_info["pol_name"], "CS Policy Priority": cs_info["pol_pri"], "CS Policy Rule": cs_info["pol_rule"],
-                "Load Balancer": lb_name, "VS IP": lb_info["ip"], "VS Port": lb_info["port"], "VS Protokol": lb_info["protocol"],
-                "Backend Server": backend["name"], "IP Adresi": backend["ip"], "Port": backend["port"], "CIP": backend["cip"], "Monitor Rule": backend.get("monitor", "-"),
-                "Azure Hostname": "", "Azure Tag": ""
-            })
+            row = {
+                "Content Switch": cs_info["name"],
+                "CS Aciklama": cs_info["desc"],
+                "CS IP": cs_info["ip"],
+                "CS Port": cs_info["port"],
+                "CS Protokol": cs_info["protocol"],
+                "CS Policy Name": cs_info["pol_name"],
+                "CS Policy Priority": cs_info["pol_pri"],
+                "CS Policy Rule": cs_info["pol_rule"],
+                "Load Balancer": lb_name,
+                "VS IP": lb_info["ip"],
+                "VS Port": lb_info["port"],
+                "VS Protokol": lb_info["protocol"],
+                "Backend Server": backend["name"],
+                "IP Adresi": backend["ip"],
+                "Port": backend["port"],
+                "Azure Hostname": "",
+                "Azure Tag": ""
+            }
+
+            row.update(persistence_fields)
+            report_data.append(row)
 
 def run_reports(selected_company_names):
     try:
         sirketler = config_manager.load_settings()
     except Exception as e:
-        print(f"[-] Config Hatasi: {e}")
+        print(_('error.config', e=str(e)))
         return
 
     sirketler_to_process = {k: v for k, v in sirketler.items() if k in selected_company_names}
     
-    print("[*] Seçilen şirketler için işlemler başlatılıyor...\n")
+    print(_('info.starting'))
 
     for sirket_adi, sirket_config in sirketler_to_process.items():
         print(f"==========================================")
-        print(f"[*] {sirket_adi} ŞİRKETİ İŞLENİYOR...")
+        print(_('info.processing_company', sirket_adi=sirket_adi))
         print(f"==========================================")
 
         azure_server_list = None
@@ -184,24 +224,25 @@ def run_reports(selected_company_names):
             if all([az_url, az_col, az_proj, az_dg_id, az_pat]):
                 azure_server_list = azure_manager.fetch_azure_deployment_targets(az_url, az_col, az_proj, az_dg_id, az_pat)
             else:
-                print(f"[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik! Atlanıyor...\n")
+                print(_('error.azure_env_missing', sirket_adi=sirket_adi))
 
         ns_ip = os.getenv(f"{sirket_adi}_NS_IP") or os.getenv("NS_IP")
         ns_user = os.getenv(f"{sirket_adi}_NS_USER") or os.getenv("NS_USER")
         ns_pass = os.getenv(f"{sirket_adi}_NS_PASS") or os.getenv("NS_PASS")
 
         if not all([ns_ip, ns_user, ns_pass]):
-            print(f"[-] HATA: Eksik kimlik bilgisi! Atlanıyor...\n")
+            print(_('error.missing_credentials'))
             continue
 
         try:
             session, base_url, headers = netscaler_api.connect_and_login(ns_ip, ns_user, ns_pass)
         except Exception as e:
-            print(f"[-] Baglanti Hatasi: {e}\n")
+            print(_('error.connection', e=str(e)))
             continue
         
         report_data = []
         policy_data = []
+        services_data = {} 
         processed_lbs = set()
         processed_policy_vservers = set()
         
@@ -210,18 +251,18 @@ def run_reports(selected_company_names):
 
         for cs_item in cs_listesi:
             cs_name = cs_item.get("NAME")
-            print(f"[*] CS isleniyor: {cs_name}")
+            print(_('info.processing_cs', cs_name=cs_name))
             
             cs_api_info = netscaler_api.get_cs_info(session, base_url, headers, cs_name)
 
             if not cs_api_info:
-                print(f"[-] HATA: '{cs_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.")
+                print(_('error.cs_not_found', cs_name=cs_name))
                 report_data.append({
-                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", "Açıklama Yok"),
-                    "CS IP": "Tanım Bulunmamaktadır", "CS Port": "-", "CS Protokol": "-",
+                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", _('value.no_description')),
+                    "CS IP": _('value.no_definition'), "CS Port": "-", "CS Protokol": "-",
                     "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
                     "Load Balancer": "-", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
-                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-",
                     "Azure Hostname": "-", "Azure Tag": "-",
                     "_highlight_cs_red": True
                 })
@@ -238,7 +279,7 @@ def run_reports(selected_company_names):
                 for lb_name, p_data in target_lbs.items():
                     cs_info = {
                         "name": cs_name,
-                        "desc": cs_item.get("DESCRIPTION", "Açıklama Yok"),
+                        "desc": cs_item.get("DESCRIPTION", _('value.no_description')),
                         "ip": cs_api_info["ip"],
                         "port": cs_api_info["port"],
                         "protocol": cs_api_info["protocol"],
@@ -246,17 +287,17 @@ def run_reports(selected_company_names):
                         "pol_pri": "\n".join(p_data["priorities"]),
                         "pol_rule": "\n".join(p_data["rules"])
                     }
-                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers)
+                    add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers, services_data)
                     processed_lbs.add(lb_name)
                 report_data.append(EMPTY_ROW)
             else:
-                print(f"    [!] Hedef LB veya Policy bulunamadı.")
+                print(_('value.no_target_lb'))
                 report_data.append({
-                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", "Açıklama Yok"),
+                    "Content Switch": cs_name, "CS Aciklama": cs_item.get("DESCRIPTION", _('value.no_description')),
                     "CS IP": cs_api_info["ip"], "CS Port": cs_api_info["port"], "CS Protokol": cs_api_info["protocol"],
                     "CS Policy Name": "-", "CS Policy Priority": "-", "CS Policy Rule": "-",
-                    "Load Balancer": "Hedef Yok", "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
-                    "Backend Server": "-", "IP Adresi": "-", "Port": "-", "CIP": "-", "Monitor Rule": "-",
+                    "Load Balancer": _('value.no_target'), "VS IP": "-", "VS Port": "-", "VS Protokol": "-",
+                    "Backend Server": "-", "IP Adresi": "-", "Port": "-",
                     "Azure Hostname": "-", "Azure Tag": "-"
                 })
                 report_data.append(EMPTY_ROW)
@@ -265,12 +306,12 @@ def run_reports(selected_company_names):
             if lb_name in processed_lbs:
                 continue
                 
-            print(f"[*] Bagimsiz LB isleniyor: {lb_name}")
+            print(_('info.processing_independent_lb', lb_name=lb_name))
             cs_info = {
-                "name": "N/A", "desc": "Bağımsız VS", "ip": "N/A", "port": "N/A", 
+                "name": "N/A", "desc": _('value.independent_vs'), "ip": "N/A", "port": "N/A", 
                 "protocol": "N/A", "pol_name": "N/A", "pol_pri": "N/A", "pol_rule": "N/A"
             }
-            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers)
+            add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, azure_server_list, sirket_config, policy_data, processed_policy_vservers, services_data)
             report_data.append(EMPTY_ROW)
 
         if report_data:
@@ -285,32 +326,32 @@ def run_reports(selected_company_names):
 
             datasets_data = {}
             if found_datasets:
-                print(f"[*] {len(found_datasets)} Dataset bulundu. Çekiliyor...")
+                print(_('info.datasets_found', count=len(found_datasets)))
                 datasets_data = dataset_manager.fetch_datasets_from_ns(session, base_url, headers, found_datasets)
 
-            excel_exporter.create_excel_report(report_data, fields, excel_path, EMPTY_ROW, sirket_adi, datasets_data, policy_data)
-            print(f"[+] {sirket_adi} Raporu tamamlandi: {excel_path}\n")
+            excel_exporter.create_excel_report(report_data, fields, excel_path, EMPTY_ROW, sirket_adi, datasets_data, policy_data, services_data)
+            print(_('info.report_completed', sirket_adi=sirket_adi, excel_path=excel_path))
         else:
-            print(f"[-] Kayit bulunamadi.\n")
+            print(_('error.no_records'))
 
         netscaler_api.logout(session, base_url, headers)
         
-    print("[✓] Tüm işlemler başarıyla tamamlandı.\n")
+    print(_('info.all_done'))
 
 def run_azure_liste(selected_company_names):
     try:
         sirketler = config_manager.load_settings()
     except Exception as e:
-        print(f"[-] Config Hatasi: {e}")
+        print(_('error.config', e=str(e)))
         return
 
     sirketler_to_process = {k: v for k, v in sirketler.items() if k in selected_company_names}
     
-    print("[*] Seçilen şirketler için YALNIZCA AZURE LİSTE başlatılıyor...\n")
+    print(_('info.starting_azure_only'))
 
     for sirket_adi, sirket_config in sirketler_to_process.items():
         print(f"==========================================")
-        print(f"[*] {sirket_adi} - AZURE DEVOPS SUNUCULARI")
+        print(_('info.azure_servers_title', sirket_adi=sirket_adi))
         print(f"==========================================")
 
         if sirket_config.get("AZURE") == True:
@@ -323,11 +364,11 @@ def run_azure_liste(selected_company_names):
             if all([az_url, az_col, az_proj, az_dg_id, az_pat]):
                 azure_manager.fetch_azure_deployment_targets(az_url, az_col, az_proj, az_dg_id, az_pat)
             else:
-                print(f"[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik!\n")
+                print(_('error.azure_env_missing_list', sirket_adi=sirket_adi))
         else:
-            print(f"[-] {sirket_adi} için settings.json'da AZURE özelliği kapalı (false).\n")
+            print(_('error.azure_disabled', sirket_adi=sirket_adi))
 
-    input("\n[✓] Liste tamamlandı. Ana menüye dönmek için Enter'a basın...")
+    input(_('info.list_done'))
 
 def main():
     is_web = os.getenv("WEB_VIEW", "False").strip().lower() == "true"
@@ -341,11 +382,11 @@ def main():
             try:
                 sirketler = config_manager.load_settings()
             except Exception as e:
-                print(f"[-] Config Hatasi: {e}")
+                print(_('error.config', e=str(e)))
                 return
 
             if not sirketler:
-                print("[-] settings.json içinde şirket bulunamadı!")
+                print(_('error.no_company_in_settings'))
                 return
 
             selected_company_names, action = select_companies_menu(sirketler)
@@ -353,7 +394,7 @@ def main():
             
             if action == 'RUN':
                 run_reports(selected_company_names)
-                input("\nİşlemler bitti. Devam etmek için Enter'a basın...")
+                input(_('info.press_enter_to_continue'))
             elif action == 'AZURE_LISTE':
                 run_azure_liste(selected_company_names)
 

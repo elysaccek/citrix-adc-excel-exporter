@@ -8,8 +8,12 @@ import openpyxl
 from openpyxl.utils.cell import range_boundaries
 import main as core_main
 import azure_manager
+from language_manager import _
 
 app = Flask(__name__, template_folder='web', static_folder='web/static')
+
+# Çeviri fonksiyonunu (LanguageManager) Jinja2 (HTML şablonları) için kullanılabilir yapıyoruz
+app.jinja_env.globals.update(_=_)
 
 class LogCapture:
     def __init__(self):
@@ -73,11 +77,11 @@ def index():
 @app.route('/run', methods=['POST'])
 def run_report():
     if logger.is_running:
-        return jsonify({"status": "error", "message": "Zaten çalışan bir işlem var! Lütfen bitmesini bekleyin."})
+        return jsonify({"status": "error", "message": _('web.backend_err_already_running')})
     
     companies = request.json.get('companies', [])
     if not companies:
-        return jsonify({"status": "error", "message": "Şirket seçilmedi!"})
+        return jsonify({"status": "error", "message": _('web.backend_err_no_company')})
         
     threading.Thread(target=background_task, args=(companies,)).start()
     return jsonify({"status": "success"})
@@ -91,13 +95,13 @@ def download(filename):
     filepath = os.path.join('raporlar', filename)
     if os.path.exists(filepath):
         return send_file(filepath, as_attachment=True)
-    return "Dosya bulunamadı", 404
+    return _('web.backend_err_file_not_found'), 404
 
 @app.route('/view/<filename>')
 def view_excel(filename):
     filepath = os.path.join('raporlar', filename)
     if not os.path.exists(filepath):
-        return "Dosya bulunamadı", 404
+        return _('web.backend_err_file_not_found'), 404
         
     wb = openpyxl.load_workbook(filepath, data_only=True)
     
@@ -188,13 +192,13 @@ def azure_modulu_page():
 def api_azure_targets():
     company = request.json.get('company')
     if not company:
-        return jsonify({"status": "error", "message": "Şirket seçilmedi."})
+        return jsonify({"status": "error", "message": _('web.backend_err_no_company')})
 
     sirketler = config_manager.load_settings()
     sirket_config = sirketler.get(company, {})
     
     if not sirket_config.get("AZURE"):
-        return jsonify({"status": "error", "message": "Bu şirket için Azure aktif değil."})
+        return jsonify({"status": "error", "message": _('web.backend_err_azure_disabled')})
 
     az_url = os.getenv(f"{company}_AZURE_SERVER_URL")
     az_col = os.getenv(f"{company}_AZURE_COLLECTION")
@@ -203,7 +207,7 @@ def api_azure_targets():
     az_pat = os.getenv(f"{company}_AZURE_PAT")
     
     if not all([az_url, az_col, az_proj, az_dg_id, az_pat]):
-        return jsonify({"status": "error", "message": "Eksik .env parametreleri. (URL, Proje, Token vb.)"})
+        return jsonify({"status": "error", "message": _('web.backend_err_missing_env')})
 
     old_stdout = sys.stdout
     devnull = open(os.devnull, 'w', encoding='utf-8')
@@ -243,5 +247,5 @@ def api_save_settings():
         return jsonify({"status": "error", "message": message})
 
 def start_server(port):
-    print(f"[*] http://127.0.0.1:{port} adresi üzerinde web arayüzü başlatıldı.\n")
+    print(_('web.backend_info_web_started', port=port))
     app.run(host='0.0.0.0', port=port, debug=False)

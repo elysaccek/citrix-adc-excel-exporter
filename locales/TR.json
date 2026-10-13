@@ -1,0 +1,91 @@
+{
+    "menu": {
+        "header_title": "CITRIX NLB RAPORLAMA PANELİ",
+        "select_companies": "Çalıştırmak istediğiniz şirketleri seçin:",
+        "actions": "İşlemler:",
+        "select_all": "[T] Tümünü Seç | [B] Seçimi Bırak",
+        "run": "[C] ÇALIŞTIR (Tam Rapor) | [Z] AZURE LİSTE (Sadece Liste)",
+        "quit": "[Q] Çıkış",
+        "choice": "Seçiminiz: "
+    },
+    "error": {
+        "min_one_company": "\n[!] En az bir şirket seçin! (Enter ile devam)...",
+        "invalid_input": "\n[!] Hatalı giriş! (Enter ile devam)...",
+        "lb_not_found": "    [!] HATA: '{lb_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.",
+        "cs_not_found": "[-] HATA: '{cs_name}' bulunamadı. Raporlara eksik tanım olarak ekleniyor.",
+        "config": "[-] Config Hatasi: {e}",
+        "azure_env_missing": "[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik! Atlanıyor...\n",
+        "missing_credentials": "[-] HATA: Eksik kimlik bilgisi! Atlanıyor...\n",
+        "connection": "[-] Baglanti Hatasi: {e}\n",
+        "no_records": "[-] Kayit bulunamadi.\n",
+        "azure_env_missing_list": "[-] {sirket_adi} için AZURE açık ancak .env değerleri eksik!\n",
+        "azure_disabled": "[-] {sirket_adi} için settings.json'da AZURE özelliği kapalı (false).\n",
+        "no_company_in_settings": "[-] settings.json içinde şirket bulunamadı!"
+    },
+    "value": {
+        "no_definition": "Tanım Bulunmamaktadır",
+        "no_pool": "Havuz Yok",
+        "no_description": "Açıklama Yok",
+        "no_target_lb": "    [!] Hedef LB veya Policy bulunamadı.",
+        "no_target": "Hedef Yok",
+        "independent_vs": "Bağımsız VS"
+    },
+    "info": {
+        "starting": "[*] Seçilen şirketler için işlemler başlatılıyor...\n",
+        "processing_company": "[*] {sirket_adi} ŞİRKETİ İŞLENİYOR...",
+        "processing_cs": "[*] CS isleniyor: {cs_name}",
+        "processing_independent_lb": "[*] Bagimsiz LB isleniyor: {lb_name}",
+        "datasets_found": "[*] {count} Dataset bulundu. Çekiliyor...",
+        "report_completed": "[+] {sirket_adi} Raporu tamamlandi: {excel_path}\n",
+        "all_done": "[✓] Tüm işlemler başarıyla tamamlandı.\n",
+        "starting_azure_only": "[*] Seçilen şirketler için YALNIZCA AZURE LİSTE başlatılıyor...\n",
+        "azure_servers_title": "[*] {sirket_adi} - AZURE DEVOPS SUNUCULARI",
+        "list_done": "\n[✓] Liste tamamlandı. Ana menüye dönmek için Enter'a basın...",
+        "press_enter_to_continue": "\nİşlemler bitti. Devam etmek için Enter'a basın..."
+    },
+    "web": {
+        "backend_err_already_running": "Zaten çalışan bir işlem var! Lütfen bitmesini bekleyin.",
+        "backend_err_no_company": "Şirket seçilmedi!",
+        "backend_err_file_not_found": "Dosya bulunamadı",
+        "backend_err_azure_disabled": "Bu şirket için Azure aktif değil.",
+        "backend_err_missing_env": "Eksik .env parametreleri. (URL, Proje, Token vb.)",
+        "backend_info_web_started": "[*] http://127.0.0.1:{port} adresi üzerinde web arayüzü başlatıldı.\n",
+        "index": {
+            "title": "Citrix NLB Raporlama Paneli",
+            "navbar_brand": "Citrix NLB Raporlama & Denetim Paneli",
+            "nav_home": "Ana Sayfa",
+            "nav_azure": "Azure Modülü",
+            "nav_settings": "Ayarlar (JSON)",
+            "card_start_report": "Rapor Başlat",
+            "select_project": "Şirket / Proje Seçin:",
+            "btn_run_selected": "Seçili Olanları Çalıştır",
+            "card_live_logs": "Canlı Loglar",
+            "waiting_for_action": "İşlem bekleniyor...",
+            "card_reports": "Üretilen Excel Raporları",
+            "report_count": "Rapor",
+            "btn_view": "Görüntüle",
+            "btn_download": "İndir",
+            "no_reports": "Henüz üretilmiş bir rapor bulunmuyor.",
+            "js_err_min_one": "Lütfen en az bir şirket seçin!",
+            "js_status_running": "Çalışıyor...",
+            "js_status_starting": "İşlem başlatılıyor...\n",
+            "js_all_done_flag": "Tüm işlemler başarıyla tamamlandı"
+        },
+        "settings": {
+            "title": "Ayarlar (settings.json)",
+            "card_header": "settings.json Yapılandırma Editörü",
+            "btn_refresh": "Yenile",
+            "alert_info": "Bilgi:",
+            "alert_desc": "JSON formatına dikkat ediniz. Yanlış virgül veya tırnak eksiği sistemde okuma hatasına yol açabilir. Düzenlemeniz bittiğinde sağ alt köşedeki \"Kaydet\" butonuna tıklayınız.",
+            "editor_placeholder": "Yükleniyor...",
+            "btn_save": "Kaydet",
+            "js_err_load_fail": "Ayarlar yüklenemedi: ",
+            "js_err_network_load": "Ağ hatası: Ayarlar çekilemedi.",
+            "js_err_invalid_json": "Geçersiz JSON Formatı!\\nDetay: ",
+            "js_status_saving": "Kaydediliyor...",
+            "js_success_save": "Kayıt Başarılı: ",
+            "js_err_save_fail": "Kayıt Başarısız!\\n",
+            "js_err_network_save": "Ağ hatası: Sunucuya ulaşılamadı."
+        }
+    }
+}

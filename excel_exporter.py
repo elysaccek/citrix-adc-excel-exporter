@@ -6,7 +6,7 @@ def clean_sheet_name(name):
     clean_name = re.sub(r'[\\*?:/\[\]]', '', name)
     return clean_name[:31]
 
-def create_excel_report(report_data, fields, excel_path, empty_row_template, company_name, datasets_data=None, policy_data=None):
+def create_excel_report(report_data, fields, excel_path, empty_row_template, company_name, datasets_data=None, policy_data=None, services_data=None):
     wb = Workbook()
     
     ws_main = wb.active
@@ -94,11 +94,13 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                 cell.fill = red_fill
                 cell.font = red_font
             
-            if hl_lb_red and 13 <= col_idx <= 17:
+            # CIP çıkarıldığı için indeksler 13-15 arası oldu (Backend)
+            if hl_lb_red and 13 <= col_idx <= 15:
                 cell.fill = red_fill
                 cell.font = red_font
                 
-            if hl_az_red and 18 <= col_idx <= 19:
+            # Azure bilgileri indeksleri 16-17 olarak güncellendi
+            if hl_az_red and 16 <= col_idx <= 17:
                 cell.fill = red_fill
                 cell.font = red_font
                 
@@ -127,7 +129,7 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
         
         if current_lb != prev_lb or row > last_row:
             if row - 1 > start_lb_row and prev_lb and prev_lb != "":
-                for col_idx in range(6, 13): 
+                for col_idx in range(18, 25):
                     ws_main.merge_cells(start_row=start_lb_row, start_column=col_idx, end_row=row-1, end_column=col_idx)
             start_lb_row = row
 
@@ -146,8 +148,74 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
         adjusted_width = min(max(max_length + 6, 15), 70)
         ws_main.column_dimensions[column_letter].width = adjusted_width
 
+    # ==========================
+    # SERVICES SEKMESI
+    # ==========================
+    if services_data:
+        ws_srv = wb.create_sheet(title="SERVICES", index=1)
+        
+        srv_headers = [
+            "Service Name", "Monitor Rule", "Surge Protection", "Use Proxy Port", 
+            "Down State Flush", "Access Down", "Use Source IP Address", "Client Keep-Alive", 
+            "TCP Buffering", "Compression", "Insert Client IP", "Header",
+            "Maximum Bandwidth (Kbps)", "Monitor Threshold", "Max Requests", "Max Clients", 
+            "Client Idle Time-out (sec)", "Server Idle Time-out (sec)"
+        ]
+        ws_srv.append(srv_headers)
+        
+        srv_header_fill = PatternFill(start_color="0070C0", end_color="0070C0", fill_type="solid")
+        for cell in ws_srv[1]:
+            cell.font = header_font
+            cell.fill = srv_header_fill
+            cell.alignment = center_alignment
+            cell.border = thin_border
+
+        # Services verilerini isim sırasına göre (A'dan Z'ye) alfabetik listeleme
+        for srv_name, s_info in sorted(services_data.items(), key=lambda item: str(item[0]).lower()):
+            row_data = [
+                s_info.get("name", ""),
+                s_info.get("monitor", ""),
+                s_info.get("sp", ""),
+                s_info.get("useproxyport", ""),
+                s_info.get("downstateflush", ""),
+                s_info.get("accessdown", ""),
+                s_info.get("usip", ""),
+                s_info.get("cka", ""),
+                s_info.get("tcpb", ""),
+                s_info.get("cmp", ""),
+                s_info.get("cip", ""),
+                s_info.get("cipheader", ""),
+                s_info.get("maxbandwidth", ""),
+                s_info.get("monthreshold", ""),
+                s_info.get("maxreq", ""),
+                s_info.get("maxclient", ""),
+                s_info.get("clttimeout", ""),
+                s_info.get("svrtimeout", "")
+            ]
+            ws_srv.append(row_data)
+
+        for row in ws_srv.iter_rows(min_row=2, max_row=ws_srv.max_row, min_col=1, max_col=len(srv_headers)):
+            for cell in row:
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                cell.border = thin_border
+                
+        for col in ws_srv.columns:
+            max_length = 0
+            column_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    val = str(cell.value) if cell.value is not None else ""
+                    lines = val.split("\n")
+                    for line in lines:
+                        if len(line) > max_length: max_length = len(line)
+                except: pass
+            ws_srv.column_dimensions[column_letter].width = min(max(max_length + 4, 15), 50)
+
+    # ==========================
+    # POLICIES SEKMESI
+    # ==========================
     if policy_data:
-        ws_pol = wb.create_sheet(title="POLICIES", index=1)
+        ws_pol = wb.create_sheet(title="POLICIES", index=2) 
         
         pol_headers = [
             "Content Switch / Load Balancer", "CS IP / VS IP", "CS Port / VS Port", "CS Protokol / VS Protokol",
@@ -217,6 +285,9 @@ def create_excel_report(report_data, fields, excel_path, empty_row_template, com
                         ws_pol.merge_cells(start_row=start_merge_row, start_column=col_idx, end_row=row-1, end_column=col_idx)
                     start_merge_row = row
     
+    # ==========================
+    # DATASETS SEKMESI
+    # ==========================
     if datasets_data:
         ds_header_fill = PatternFill(start_color="C65911", end_color="C65911", fill_type="solid")
         
