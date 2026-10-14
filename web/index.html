@@ -53,6 +53,29 @@
                     </div>
                 </div>
 
+                <div class="card shadow-sm mb-4 border-secondary">
+                    <div class="card-header bg-info text-dark">
+                        <h5 class="card-title mb-0">
+                            {{ _('web.index.card_custom_report') }}
+                        </h5>
+                    </div>
+
+                    <div class="card-body bg-body-tertiary">
+                        <p class="text-secondary">
+                            {{ _('web.index.custom_report_description') }}
+                        </p>
+
+                        <button
+                            type="button"
+                            id="btnCustomOpen"
+                            class="btn btn-outline-info fw-bold w-100"
+                            data-bs-toggle="modal"
+                            data-bs-target="#customReportModal">
+                            {{ _('web.index.btn_custom_report_open') }}
+                        </button>
+                    </div>
+                </div>
+
                 <div class="card shadow-sm border-secondary">
                     <div class="card-header bg-secondary text-white">
                         <h5 class="card-title mb-0">{{ _('web.index.card_live_logs') }}</h5>
@@ -104,12 +127,76 @@
         </div>
     </div>
 
+    <div class="modal fade" id="customReportModal" tabindex="-1"
+        aria-labelledby="customReportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light border-secondary">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="customReportModalLabel">
+                        {{ _('web.index.card_custom_report') }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+
+                <form id="customReportForm">
+                    <div class="modal-body">
+
+                        <div class="mb-3">
+                            <label for="customNlbIp" class="form-label">
+                                {{ _('web.index.custom_report_ip') }}
+                            </label>
+                            <input type="text" class="form-control"
+                                id="customNlbIp" name="ns_ip"
+                                placeholder="192.168.1.10"
+                                autocomplete="url" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="customNlbUser" class="form-label">
+                                {{ _('web.index.custom_report_user') }}
+                            </label>
+                            <input type="text" class="form-control"
+                                id="customNlbUser" name="ns_user"
+                                autocomplete="username" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="customNlbPass" class="form-label">
+                                {{ _('web.index.custom_report_pass') }}
+                            </label>
+                            <input type="password" class="form-control"
+                                id="customNlbPass" name="ns_pass"
+                                autocomplete="current-password" required>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary"
+                                data-bs-dismiss="modal">
+                            İptal
+                        </button>
+
+                        <button type="submit" id="btnCustomRun"
+                                class="btn btn-info fw-bold">
+                            {{ _('web.index.btn_custom_report_run') }}
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
     <div id="i18n-data" 
          data-err-min-one="{{ _('web.index.js_err_min_one') }}"
          data-status-running="{{ _('web.index.js_status_running') }}"
          data-status-starting="{{ _('web.index.js_status_starting') }}"
          data-btn-run-selected="{{ _('web.index.btn_run_selected') }}"
          data-all-done-flag="{{ _('web.index.js_all_done_flag') }}"
+         data-custom-required="{{ _('web.index.js_err_custom_required') }}"
          style="display: none;">
     </div>
 
@@ -121,7 +208,8 @@
             statusRunning: i18nDataEl.getAttribute('data-status-running'),
             statusStarting: i18nDataEl.getAttribute('data-status-starting'),
             btnRunSelected: i18nDataEl.getAttribute('data-btn-run-selected'),
-            allDoneFlag: i18nDataEl.getAttribute('data-all-done-flag')
+            allDoneFlag: i18nDataEl.getAttribute('data-all-done-flag'),
+            customRequired: i18nDataEl.getAttribute('data-custom-required')
         };
         let logTimer = null;
         function startReport() {
@@ -144,26 +232,109 @@
                 if(data.status === 'success') {
                     logTimer = setInterval(pollLogs, 1000);
                 } else {
+                    setReportControlsDisabled(false);
                     alert(data.message);
                     document.getElementById('btnRun').disabled = false;
                     document.getElementById('btnRun').innerText = i18n.btnRunSelected;
                 }
             });
         }
+        function setReportControlsDisabled(disabled) {
+            document.getElementById('btnRun').disabled = disabled;
+            document.getElementById('btnCustomOpen').disabled = disabled;
+            document.getElementById('btnCustomRun').disabled = disabled;
+
+            document.getElementById('btnRun').innerText =
+                disabled ? i18n.statusRunning : i18n.btnRunSelected;
+
+            document.getElementById('btnCustomRun').innerText =
+                disabled ? i18n.statusRunning :
+                '{{ _("web.index.btn_custom_report_run") }}';
+        }
+
+        document.getElementById('customReportForm').addEventListener(
+            'submit',
+            function(event) {
+                event.preventDefault();
+                startCustomReport();
+            }
+        );
+
+        function startCustomReport() {
+            const nsIp = document.getElementById('customNlbIp').value.trim();
+            const nsUser = document.getElementById('customNlbUser').value.trim();
+            const nsPass = document.getElementById('customNlbPass').value;
+
+            if (!nsIp || !nsUser || !nsPass) {
+                alert(i18n.customRequired);
+                return;
+            }
+
+            setReportControlsDisabled(true);
+            document.getElementById('logView').innerText = i18n.statusStarting;
+
+            fetch('/run_custom', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    ns_ip: nsIp,
+                    ns_user: nsUser,
+                    ns_pass: nsPass
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Parolayı formda tutmaya devam etme.
+                    document.getElementById('customNlbPass').value = '';
+
+                    const modalElement =
+                        document.getElementById('customReportModal');
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+
+                    if (modal) {
+                        modal.hide();
+                    }
+
+                    if (logTimer) {
+                        clearInterval(logTimer);
+                    }
+
+                    logTimer = setInterval(pollLogs, 1000);
+                } else {
+                    setReportControlsDisabled(false);
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                setReportControlsDisabled(false);
+                alert('Custom rapor isteği başarısız: ' + error.message);
+            });
+        }
         function pollLogs() {
             fetch('/logs')
-            .then(r => r.json())
+            .then(response => response.json())
             .then(data => {
-                let logBox = document.getElementById('logView');
+                const logBox = document.getElementById('logView');
+
                 logBox.innerText = data.logs;
                 logBox.scrollTop = logBox.scrollHeight;
-                
-                if(!data.is_running && data.logs.includes(i18n.allDoneFlag)) {
-                    clearInterval(logTimer);
-                    document.getElementById('btnRun').disabled = false;
-                    document.getElementById('btnRun').innerText = i18n.btnRunSelected;
-                    setTimeout(() => location.reload(), 2500); 
+
+                if (!data.is_running) {
+                    if (logTimer) {
+                        clearInterval(logTimer);
+                        logTimer = null;
+                    }
+
+                    setReportControlsDisabled(false);
+
+                    if (data.logs.includes(i18n.allDoneFlag)) {
+                        setTimeout(() => location.reload(), 2500);
+                    }
                 }
+            })
+            .catch(error => {
+                console.error('Log kontrolü başarısız:', error);
             });
         }
     </script>

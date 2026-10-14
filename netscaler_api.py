@@ -307,3 +307,71 @@ def get_vserver_policies(session, base_url, headers, vs_name, vs_type, vs_info):
         })
             
     return policies_list
+
+
+def get_all_vservers(session, base_url, headers, entity_type, page_size=100):
+    if entity_type not in ("csvserver", "lbvserver"):
+        raise ValueError(
+            "Desteklenmeyen Virtual Server tipi: " + str(entity_type)
+        )
+
+    endpoint = f"{base_url}/{entity_type}"
+    all_vservers = []
+    page_number = 1
+
+    while True:
+        response = session.get(
+            endpoint,
+            headers=headers,
+            params={
+                "pagesize": page_size,
+                "pageno": page_number
+            },
+            timeout=30
+        )
+
+        try:
+            payload = response.json()
+        except ValueError:
+            raise RuntimeError(
+                f"{entity_type} yanıtı JSON değil. "
+                f"HTTP: {response.status_code}"
+            )
+
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"{entity_type} listesi alınamadı. "
+                f"HTTP: {response.status_code}, "
+                f"Detay: {payload.get('message', payload)}"
+            )
+
+        error_code = payload.get("errorcode", 0)
+        if error_code not in (0, "0", None):
+            raise RuntimeError(
+                f"{entity_type} NITRO hatası: "
+                f"{payload.get('message', payload)}"
+            )
+
+        page_items = payload.get(entity_type, [])
+
+        if not isinstance(page_items, list):
+            raise RuntimeError(
+                f"{entity_type} yanıt formatı beklenenden farklı."
+            )
+
+        all_vservers.extend(page_items)
+
+        if len(page_items) < page_size:
+            break
+
+        page_number += 1
+
+        if page_number > 10000:
+            raise RuntimeError(
+                f"{entity_type} listelemesinde sayfa sınırı aşıldı."
+            )
+
+    return sorted(
+        all_vservers,
+        key=lambda item: str(item.get("name", "")).lower()
+    )

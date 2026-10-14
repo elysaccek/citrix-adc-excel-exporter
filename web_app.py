@@ -42,6 +42,20 @@ def background_task(companies):
         sys.stdout = logger.original_stdout
         logger.is_running = False
 
+
+def custom_background_task(ns_ip, ns_user, ns_pass):
+    sys.stdout = logger
+    logger.is_running = True
+    logger.logs = []
+
+    try:
+        core_main.run_custom_report(ns_ip, ns_user, ns_pass)
+    except Exception as e:
+        print(f"\n[!] Custom rapor işlemi başarısız: {e}")
+    finally:
+        sys.stdout = logger.original_stdout
+        logger.is_running = False
+
 def get_css_color(pxl_color):
     if not pxl_color or getattr(pxl_color, 'type', None) != 'rgb' or not pxl_color.rgb:
         return None
@@ -54,25 +68,36 @@ def get_css_color(pxl_color):
         return f"#{rgb}"
     return None
 
-
 @app.route('/')
 def index():
     sirketler = config_manager.load_settings()
     companies = list(sirketler.keys())
-    
+
     reports = {}
+
     if os.path.exists('raporlar'):
         files = sorted(os.listdir('raporlar'), reverse=True)
+
         for f in files:
-            if f.endswith('.xlsx'):
-                for c in companies:
-                    clean_c = c.lower().replace(" ", "_")
-                    if f.startswith(clean_c):
-                        if c not in reports: reports[c] = []
-                        reports[c].append(f)
-                        break
-                        
-    return render_template('index.html', companies=companies, reports=reports)
+            if not f.lower().endswith('.xlsx'):
+                continue
+
+            if f.lower().endswith('_citrix_lb_rapor.xlsx'):
+                reports.setdefault("Custom Raporlar", []).append(f)
+                continue
+
+            for company in companies:
+                clean_company = company.lower().replace(" ", "_")
+
+                if f.lower().startswith(clean_company):
+                    reports.setdefault(company, []).append(f)
+                    break
+
+    return render_template(
+        'index.html',
+        companies=companies,
+        reports=reports
+    )
 
 @app.route('/run', methods=['POST'])
 def run_report():
@@ -85,6 +110,36 @@ def run_report():
         
     threading.Thread(target=background_task, args=(companies,)).start()
     return jsonify({"status": "success"})
+
+
+@app.route('/run_custom', methods=['POST'])
+def run_custom_report_api():
+    if logger.is_running:
+        return jsonify({
+            "status": "error",
+            "message": _('web.backend_err_already_running')
+        })
+
+    data = request.get_json(silent=True) or {}
+
+    ns_ip = str(data.get("ns_ip", "")).strip()
+    ns_user = str(data.get("ns_user", "")).strip()
+    ns_pass = data.get("ns_pass", "")
+
+    if not ns_ip or not ns_user or not isinstance(ns_pass, str) or not ns_pass:
+        return jsonify({
+            "status": "error",
+            "message": _('web.backend_err_custom_fields')
+        })
+
+    threading.Thread(
+        target=custom_background_task,
+        args=(ns_ip, ns_user, ns_pass),
+        daemon=True
+    ).start()
+
+    return jsonify({"status": "success"})
+
 
 @app.route('/logs')
 def get_logs():

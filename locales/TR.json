@@ -45,6 +45,7 @@
     },
     "web": {
         "backend_err_already_running": "Zaten çalışan bir işlem var! Lütfen bitmesini bekleyin.",
+        "backend_err_custom_fields": "NLB IP, kullanıcı adı ve parola zorunludur.",
         "backend_err_no_company": "Şirket seçilmedi!",
         "backend_err_file_not_found": "Dosya bulunamadı",
         "backend_err_azure_disabled": "Bu şirket için Azure aktif değil.",
@@ -69,7 +70,15 @@
             "js_err_min_one": "Lütfen en az bir şirket seçin!",
             "js_status_running": "Çalışıyor...",
             "js_status_starting": "İşlem başlatılıyor...\n",
-            "js_all_done_flag": "Tüm işlemler başarıyla tamamlandı"
+            "js_all_done_flag": "Tüm işlemler başarıyla tamamlandı",
+            "card_custom_report": "Custom Rapor",
+            "custom_report_description": "NLB IP adresi ve kullanıcı bilgileriyle, cihazdaki tüm CS ve LB Virtual Server'ları için rapor oluşturun.",
+            "custom_report_ip": "NLB IP / Hostname",
+            "custom_report_user": "NLB Kullanıcı Adı",
+            "custom_report_pass": "NLB Parolası",
+            "btn_custom_report_open": "Custom Rapor Oluştur",
+            "btn_custom_report_run": "Raporu Oluştur",
+            "js_err_custom_required": "Lütfen NLB IP, kullanıcı adı ve parola alanlarını doldurun!"
         },
         "settings": {
             "title": "Ayarlar (settings.json)",

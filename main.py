@@ -196,6 +196,261 @@ def add_lb_to_report(session, base_url, headers, report_data, lb_name, cs_info, 
 
             row.update(persistence_fields)
             report_data.append(row)
+    
+
+def run_custom_report(ns_ip, ns_user, ns_pass):
+    from datetime import datetime
+
+    session = None
+    report_saved = False
+
+    ns_ip = str(ns_ip).strip()
+    ns_ip = re.sub(r"^https?://", "", ns_ip, flags=re.IGNORECASE)
+    ns_ip = ns_ip.rstrip("/")
+
+    safe_ip = re.sub(r"[^A-Za-z0-9.-]+", "-", ns_ip).strip("-")
+
+    if not safe_ip:
+        print("[!] Geçerli bir NLB IP adresi girilmelidir.")
+        return
+
+    try:
+        print(f"[*] Custom rapor başlatılıyor: {ns_ip}")
+
+        session, base_url, headers = netscaler_api.connect_and_login(
+            ns_ip, ns_user, ns_pass
+        )
+
+        all_cs = netscaler_api.get_all_vservers(
+            session, base_url, headers, "csvserver"
+        )
+        all_lbs = netscaler_api.get_all_vservers(
+            session, base_url, headers, "lbvserver"
+        )
+
+        cs_names = sorted({
+            item["name"] for item in all_cs if item.get("name")
+        })
+        lb_names = sorted({
+            item["name"] for item in all_lbs if item.get("name")
+        })
+
+        print(
+            f"[*] Keşfedilen CS sayısı: {len(cs_names)}, "
+            f"LB sayısı: {len(lb_names)}"
+        )
+
+        if not cs_names and not lb_names:
+            raise RuntimeError(
+                "Cihazda raporlanabilecek CS veya LB Virtual Server bulunamadı."
+            )
+
+        report_data = []
+        policy_data = []
+        services_data = {}
+
+        processed_lbs = set()
+        processed_policy_vservers = set()
+
+        sirket_config = {}
+        azure_servers = None
+
+        for cs_name in cs_names:
+            print(f"[*] CS işleniyor: {cs_name}")
+
+            cs_api_info = netscaler_api.get_cs_info(
+                session, base_url, headers, cs_name
+            )
+
+            if not cs_api_info:
+                print(f"[!] CS bilgisi alınamadı: {cs_name}")
+
+                report_data.append({
+                    "Content Switch": cs_name,
+                    "CS Aciklama": "Custom Rapor",
+                    "CS IP": "N/A",
+                    "CS Port": "-",
+                    "CS Protokol": "-",
+                    "CS Policy Name": "-",
+                    "CS Policy Priority": "-",
+                    "CS Policy Rule": "-",
+                    "Load Balancer": "-",
+                    "VS IP": "-",
+                    "VS Port": "-",
+                    "VS Protokol": "-",
+                    "Backend Server": "-",
+                    "IP Adresi": "-",
+                    "Port": "-",
+                    "Azure Hostname": "-",
+                    "Azure Tag": "-",
+                    "_highlight_cs_red": True
+                })
+                report_data.append(EMPTY_ROW)
+                continue
+
+            if cs_name not in processed_policy_vservers:
+                policy_data.extend(
+                    netscaler_api.get_vserver_policies(
+                        session,
+                        base_url,
+                        headers,
+                        cs_name,
+                        "csvserver",
+                        cs_api_info
+                    )
+                )
+                processed_policy_vservers.add(cs_name)
+
+            target_lbs = netscaler_api.get_cs_target_lbs(
+                session, base_url, headers, cs_name
+            )
+
+            if target_lbs:
+                for lb_name, policy_info in target_lbs.items():
+                    cs_info = {
+                        "name": cs_name,
+                        "desc": "Custom Rapor",
+                        "ip": cs_api_info["ip"],
+                        "port": cs_api_info["port"],
+                        "protocol": cs_api_info["protocol"],
+                        "pol_name": "\n".join(policy_info["names"]),
+                        "pol_pri": "\n".join(policy_info["priorities"]),
+                        "pol_rule": "\n".join(policy_info["rules"])
+                    }
+
+                    add_lb_to_report(
+                        session,
+                        base_url,
+                        headers,
+                        report_data,
+                        lb_name,
+                        cs_info,
+                        azure_servers,
+                        sirket_config,
+                        policy_data,
+                        processed_policy_vservers,
+                        services_data
+                    )
+
+                    processed_lbs.add(lb_name)
+
+            else:
+                report_data.append({
+                    "Content Switch": cs_name,
+                    "CS Aciklama": "Custom Rapor",
+                    "CS IP": cs_api_info["ip"],
+                    "CS Port": cs_api_info["port"],
+                    "CS Protokol": cs_api_info["protocol"],
+                    "CS Policy Name": "-",
+                    "CS Policy Priority": "-",
+                    "CS Policy Rule": "-",
+                    "Load Balancer": "Hedef Yok",
+                    "VS IP": "-",
+                    "VS Port": "-",
+                    "VS Protokol": "-",
+                    "Backend Server": "-",
+                    "IP Adresi": "-",
+                    "Port": "-",
+                    "Azure Hostname": "-",
+                    "Azure Tag": "-"
+                })
+
+            report_data.append(EMPTY_ROW)
+
+        for lb_name in lb_names:
+            if lb_name in processed_lbs:
+                continue
+
+            print(f"[*] Bağımsız LB işleniyor: {lb_name}")
+
+            cs_info = {
+                "name": "N/A",
+                "desc": "Bağımsız VS - Custom Rapor",
+                "ip": "N/A",
+                "port": "N/A",
+                "protocol": "N/A",
+                "pol_name": "N/A",
+                "pol_pri": "N/A",
+                "pol_rule": "N/A"
+            }
+
+            add_lb_to_report(
+                session,
+                base_url,
+                headers,
+                report_data,
+                lb_name,
+                cs_info,
+                azure_servers,
+                sirket_config,
+                policy_data,
+                processed_policy_vservers,
+                services_data
+            )
+
+            report_data.append(EMPTY_ROW)
+
+        if report_data and report_data[-1] == EMPTY_ROW:
+            report_data.pop()
+
+        if not report_data:
+            raise RuntimeError("Rapor oluşturmak için kayıt bulunamadı.")
+
+        datasets_data = {}
+
+        all_rules = [
+            row.get("CS Policy Rule", "")
+            for row in report_data
+        ]
+
+        found_datasets = dataset_manager.extract_dataset_names(all_rules)
+
+        if found_datasets:
+            print(
+                f"[*] {len(found_datasets)} Dataset bulundu. Çekiliyor..."
+            )
+            try:
+                datasets_data = dataset_manager.fetch_datasets_from_ns(
+                    session, base_url, headers, found_datasets
+                )
+            except Exception as e:
+                print(f"[!] Dataset bilgileri alınamadı: {e}")
+
+        output_dir = "raporlar"
+        os.makedirs(output_dir, exist_ok=True)
+
+        date_string = datetime.now().strftime("%Y-%m-%d")
+        filename = (
+            f"{safe_ip}_{date_string}_citrix_lb_rapor.xlsx"
+        )
+        excel_path = os.path.join(output_dir, filename)
+
+        fields = list(EMPTY_ROW.keys())
+
+        excel_exporter.create_excel_report(
+            report_data,
+            fields,
+            excel_path,
+            EMPTY_ROW,
+            f"Custom_{safe_ip}",
+            datasets_data,
+            policy_data,
+            services_data
+        )
+
+        print(f"[+] Custom rapor kaydedildi: {excel_path}")
+        report_saved = True
+
+    except Exception as e:
+        print(f"\n[!] Custom rapor hatası: {e}")
+
+    finally:
+        if session is not None:
+            netscaler_api.logout(session, base_url, headers)
+
+    if report_saved:
+        print(_('info.all_done'))
+
 
 def run_reports(selected_company_names):
     try:
